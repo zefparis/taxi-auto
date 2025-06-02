@@ -6,9 +6,33 @@ const nextConfig = {
   i18n,
   images: {
     domains: ['localhost', 'taxi-express-rdc.vercel.app', 'randomuser.me'],
+    unoptimized: true, // Disable image optimization to reduce memory usage
   },
   swcMinify: true,
-  // App directory is enabled by default in Next.js 13+
+  compress: true,
+  productionBrowserSourceMaps: false, // Disable source maps in production
+  output: 'standalone', // Enable standalone output for smaller Docker images
+  experimental: {
+    // Enable experimental features that reduce memory usage
+    optimizeCss: true,
+    scrollRestoration: true,
+  },
+  webpack: (config, { isServer }) => {
+    // Reduce memory usage by limiting the number of parallel processes
+    if (!isServer) {
+      config.optimization.minimize = true;
+      config.optimization.minimizer = [];
+    }
+    return config;
+  },
 };
 
-module.exports = nextConfig;
+// Only enable profiling in development
+if (process.env.ANALYZE === 'true') {
+  const withBundleAnalyzer = require('@next/bundle-analyzer')({
+    enabled: true,
+  });
+  module.exports = withBundleAnalyzer(nextConfig);
+} else {
+  module.exports = nextConfig;
+}
