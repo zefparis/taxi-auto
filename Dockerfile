@@ -30,31 +30,45 @@ RUN echo "\n=== Fichiers de configuration ===" && \
     echo "\npackage.json (frontend):" && \
     cat frontend/package.json
 
-# Nettoyage complet avant installation
+# Nettoyage profond avant installation
 WORKDIR /app/frontend
-RUN echo "\n=== Nettoyage complet avant installation ===" && \
-    echo 'Suppression des caches NPM, node_modules et lockfiles...' && \
+RUN echo "\n=== Nettoyage profond des dépendances et caches ===" && \
+    echo 'Suppression complète de node_modules, package-lock.json et caches...' && \
     rm -rf node_modules && \
     rm -f package-lock.json && \
     rm -rf ~/.npm && \
+    rm -rf /root/.npm && \
     npm cache clean --force
 
-# Installation des dépendances avec plusieurs méthodes de secours
-RUN echo "\n=== Installation des dépendances (méthode 1: standard) ===" && \
+# Vérification du package.json
+RUN echo "\n=== Vérification du package.json ===" && \
+    echo 'Contenu du package.json :' && \
+    cat package.json && \
+    (jq . package.json || echo "jq non disponible, affichage brut")
+
+# Installation propre des dépendances
+RUN echo "\n=== Installation propre des dépendances ===" && \
     npm install --legacy-peer-deps || (\
-        echo "\n=== Échec méthode 1, tentative avec --force ===" && \
-        npm install --force || (\
-            echo "\n=== Échec méthode 2, affichage des logs d'erreur ===" && \
-            cat /root/.npm/_logs/*-debug.log 2>/dev/null || true && \
-            exit 1\
-        )\
+        echo "\n=== ÉCHEC DE L'INSTALLATION, AFFICHAGE DES LOGS ===" && \
+        cat /root/.npm/_logs/*-debug.log 2>/dev/null || true && \
+        exit 1\
     )
 
-# Si on arrive ici, l'installation a réussi, on peut construire l'application
+# Affichage du diff du package-lock.json (si versionné)
+RUN if [ -d .git ]; then \
+        echo "\n=== Diff du package-lock.json (si modifié) ===" && \
+        git diff package-lock.json || true; \
+    fi
+
+# Construction de l'application avec vérification
 RUN echo "\n=== Construction de l'application ===" && \
-    npm run build || (echo "\n=== Échec de la construction, affichage des erreurs ===" && \
-                     cat /root/.npm/_logs/*-debug.log && \
-                     exit 1)
+    npm run build || (\
+        echo "\n=== ÉCHEC DE LA CONSTRUCTION, AFFICHAGE DES LOGS ===" && \
+        cat /root/.npm/_logs/*-debug.log 2>/dev/null || true && \
+        echo "\n=== Affichage des erreurs de construction ===" && \
+        cat /app/frontend/.next/logs/error.log 2>/dev/null || echo "Fichier d'erreur non trouvé" && \
+        exit 1\
+    )
 
 # Étape d'exécution
 FROM node:18-alpine
