@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/dist/*"]
+    }
+  }
+}

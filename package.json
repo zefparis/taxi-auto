@@ -1,0 +1,38 @@
+{
+  "name": "taxi-express-rdc",
+  "version": "1.0.0",
+  "description": "Plateforme de taxi automatisée moderne pour la RDC",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspaces",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "start": "npm run start --workspace=backend",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "keywords": [
+    "taxi",
+    "rdc",
+    "express",
+    "nextjs",
+    "tailwind",
+    "ai",
+    "mobile-money"
+  ],
+  "author": "Taxi-Express RDC Team",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3"
+  }
+}

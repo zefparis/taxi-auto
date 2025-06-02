@@ -1,0 +1,344 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model (base for both clients and drivers)
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  firstName         String
+  lastName          String
+  phoneNumber       String    @unique
+  role              Role      @default(CLIENT)
+  profileImageUrl   String?
+  isActive          Boolean   @default(true)
+  isVerified        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  client            Client?
+  driver            Driver?
+  refreshTokens     RefreshToken[]
+  notifications     Notification[]
+  supportTickets    SupportTicket[]
+  
+  @@map("users")
+}
+
+// Client specific model
+model Client {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favoriteLocations Location[]
+  wallet            Wallet?
+  
+  // Relationships
+  rides             Ride[]    @relation("ClientRides")
+  ratings           Rating[]  @relation("ClientRatings")
+  
+  @@map("clients")
+}
+
+// Driver specific model
+model Driver {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber     String    @unique
+  licenseExpiry     DateTime
+  vehicleType       VehicleType
+  vehicleMake       String
+  vehicleModel      String
+  vehicleYear       Int
+  vehicleColor      String
+  vehiclePlateNumber String   @unique
+  isAvailable       Boolean   @default(false)
+  currentLatitude   Float?
+  currentLongitude  Float?
+  averageRating     Float     @default(0)
+  wallet            Wallet?
+  
+  // Documents
+  identityDocument  String?
+  driverLicense     String?
+  vehicleRegistration String?
+  insuranceDocument String?
+  
+  // Relationships
+  rides             Ride[]    @relation("DriverRides")
+  ratings           Rating[]  @relation("DriverRatings")
+  
+  @@map("drivers")
+}
+
+// Ride model
+model Ride {
+  id                String    @id @default(uuid())
+  clientId          String
+  client            Client    @relation("ClientRides", fields: [clientId], references: [id])
+  driverId          String?
+  driver            Driver?   @relation("DriverRides", fields: [driverId], references: [id])
+  status            RideStatus @default(REQUESTED)
+  
+  // Locations
+  pickupLatitude    Float
+  pickupLongitude   Float
+  pickupAddress     String
+  destinationLatitude Float
+  destinationLongitude Float
+  destinationAddress String
+  
+  // Ride details
+  requestedAt       DateTime  @default(now())
+  acceptedAt        DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  
+  // Pricing
+  estimatedPrice    Float
+  finalPrice        Float?
+  distance          Float     // in kilometers
+  duration          Int?      // in minutes
+  
+  // Payment
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentId         String?
+  
+  // Relationships
+  rating            Rating?
+  messages          Message[]
+  
+  @@map("rides")
+}
+
+// Rating model
+model Rating {
+  id                String    @id @default(uuid())
+  rideId            String    @unique
+  ride              Ride      @relation(fields: [rideId], references: [id])
+  clientId          String
+  client            Client    @relation("ClientRatings", fields: [clientId], references: [id])
+  driverId          String
+  driver            Driver    @relation("DriverRatings", fields: [driverId], references: [id])
+  clientToDriverRating Int?   // 1-5 stars
+  driverToClientRating Int?   // 1-5 stars
+  clientComment     String?
+  driverComment     String?
+  createdAt         DateTime  @default(now())
+  
+  @@map("ratings")
+}
+
+// Message model for chat
+model Message {
+  id                String    @id @default(uuid())
+  rideId            String
+  ride              Ride      @relation(fields: [rideId], references: [id])
+  senderId          String
+  content           String
+  timestamp         DateTime  @default(now())
+  isRead            Boolean   @default(false)
+  
+  @@map("messages")
+}
+
+// Wallet model
+model Wallet {
+  id                String    @id @default(uuid())
+  balance           Float     @default(0)
+  currency          String    @default("CDF") // Congolese Franc
+  clientId          String?   @unique
+  client            Client?   @relation(fields: [clientId], references: [id])
+  driverId          String?   @unique
+  driver            Driver?   @relation(fields: [driverId], references: [id])
+  
+  // Relationships
+  transactions      Transaction[]
+  
+  @@map("wallets")
+}
+
+// Transaction model
+model Transaction {
+  id                String    @id @default(uuid())
+  walletId          String
+  wallet            Wallet    @relation(fields: [walletId], references: [id])
+  amount            Float
+  type              TransactionType
+  status            TransactionStatus @default(PENDING)
+  description       String?
+  externalReference String?
+  paymentMethod     PaymentMethod
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("transactions")
+}
+
+// Location model for saved/favorite locations
+model Location {
+  id                String    @id @default(uuid())
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id])
+  name              String
+  address           String
+  latitude          Float
+  longitude         Float
+  isFavorite        Boolean   @default(false)
+  
+  @@map("locations")
+}
+
+// Notification model
+model Notification {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  title             String
+  message           String
+  type              NotificationType
+  isRead            Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  
+  @@map("notifications")
+}
+
+// RefreshToken model
+model RefreshToken {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  token             String    @unique
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  
+  @@map("refresh_tokens")
+}
+
+// Support ticket model
+model SupportTicket {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  subject           String
+  description       String
+  status            TicketStatus @default(OPEN)
+  priority          TicketPriority @default(MEDIUM)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relationships
+  responses         TicketResponse[]
+  
+  @@map("support_tickets")
+}
+
+// Ticket response model
+model TicketResponse {
+  id                String    @id @default(uuid())
+  ticketId          String
+  ticket            SupportTicket @relation(fields: [ticketId], references: [id])
+  message           String
+  respondentType    RespondentType
+  respondentId      String?
+  createdAt         DateTime  @default(now())
+  
+  @@map("ticket_responses")
+}
+
+// Enums
+enum Role {
+  CLIENT
+  DRIVER
+  ADMIN
+  SUPPORT
+}
+
+enum RideStatus {
+  REQUESTED
+  ACCEPTED
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MOBILE_MONEY
+  CREDIT_CARD
+  WALLET
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  REFUND
+  COMMISSION
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  RIDE_REQUEST
+  RIDE_ACCEPTED
+  RIDE_CANCELLED
+  RIDE_COMPLETED
+  PAYMENT
+  SYSTEM
+  PROMOTION
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RespondentType {
+  USER
+  SUPPORT
+  AI
+  SYSTEM
+}
+
+enum VehicleType {
+  STANDARD
+  PREMIUM
+  SUV
+  MOTO
+}
