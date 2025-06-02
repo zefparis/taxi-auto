@@ -13,17 +13,27 @@ const nextConfig = {
   productionBrowserSourceMaps: false, // Disable source maps in production
   output: 'standalone', // Enable standalone output for smaller Docker images
   
+  // Enable app directory
+  experimental: {
+    appDir: true,
+    optimizeCss: true,
+    scrollRestoration: true,
+  },
+  
   // Handle client-side routing
   async rewrites() {
     return [
+      // API routes
       {
-        source: '/:path*',
-        destination: '/:path*',
+        source: '/api/:path*',
+        destination: '/api/:path*',
       },
+      // Client routes
       {
         source: '/client/:path*',
         destination: '/client/:path*',
       },
+      // Driver routes
       {
         source: '/driver/:path*',
         destination: '/driver/:path*',
