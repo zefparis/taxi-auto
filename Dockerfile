@@ -8,9 +8,13 @@ ENV NODE_OPTIONS=--max_old_space_size=1024
 # Créer et définir le répertoire de travail
 WORKDIR /app
 
-# Afficher les versions
-RUN echo "Node version: $(node -v)" && \
-    echo "NPM version: $(npm -v)"
+# Afficher les informations système
+RUN echo "=== Informations système ===" && \
+    echo "Node version: $(node -v)" && \
+    echo "NPM version: $(npm -v)" && \
+    echo "Current directory: $(pwd)" && \
+    echo "Directory contents:" && \
+    ls -la
 
 # Créer la structure de dossiers
 RUN mkdir -p frontend
@@ -19,30 +23,25 @@ RUN mkdir -p frontend
 COPY package.json ./
 COPY frontend/package.json ./frontend/
 
-# Afficher la structure des dossiers et le contenu des fichiers de configuration
-RUN echo "=== Structure du projet ===" && \
-    ls -la && \
-    echo "\n=== Contenu du package.json racine ===" && \
+# Afficher les fichiers de configuration
+RUN echo "\n=== Fichiers de configuration ===" && \
+    echo "\npackage.json (racine):" && \
     cat package.json && \
-    echo "\n=== Contenu du package.json frontend ===" && \
+    echo "\npackage.json (frontend):" && \
     cat frontend/package.json
 
-# Installer les dépendances du frontend
+# Essayer d'installer les dépendances avec des options minimales
 WORKDIR /app/frontend
-RUN echo "\n=== Installation des dépendances frontend ===" && \
-    npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm install --legacy-peer-deps --no-optional --no-fund --no-audit --prefer-offline
+RUN echo "\n=== Essai d'installation avec npm install simple ===" && \
+    npm install || (echo "\n=== Échec de l'installation simple, affichage des erreurs ===" && \
+                   cat /root/.npm/_logs/*-debug.log && \
+                   exit 1)
 
-# Copier le reste des fichiers
-WORKDIR /app
-COPY . .
-
-# Construire le frontend
-WORKDIR /app/frontend
-RUN echo "\n=== Construction du frontend ===" && \
-    npm run build
+# Si on arrive ici, l'installation a réussi, on peut construire l'application
+RUN echo "\n=== Construction de l'application ===" && \
+    npm run build || (echo "\n=== Échec de la construction, affichage des erreurs ===" && \
+                     cat /root/.npm/_logs/*-debug.log && \
+                     exit 1)
 
 # Étape d'exécution
 FROM node:18-alpine
@@ -58,13 +57,12 @@ WORKDIR /app
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/frontend/package.json ./frontend/
 
-# Installer les dépendances de production
+# Installer uniquement les dépendances de production
 WORKDIR /app/frontend
 RUN echo "\n=== Installation des dépendances de production ===" && \
-    npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm install --production --legacy-peer-deps --no-optional --no-fund --no-audit --prefer-offline
+    npm install --production || (echo "\n=== Échec de l'installation de production ===" && \
+                               cat /root/.npm/_logs/*-debug.log && \
+                               exit 1)
 
 # Copier les fichiers construits et les fichiers statiques
 COPY --from=builder /app/frontend/.next ./frontend/.next
