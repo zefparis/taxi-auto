@@ -2,12 +2,25 @@
 const { i18n } = require('./next-i18next.config');
 
 const nextConfig = {
+  // Set the root directory
+  basePath: '',
+  
+  // Configure the source directory
+  distDir: '.next',
+  
+  // Enable React strict mode
   reactStrictMode: true,
+  
+  // i18n configuration
   i18n,
+  
+  // Image optimization
   images: {
     domains: ['localhost', 'taxi-express-rdc.vercel.app', 'randomuser.me'],
     unoptimized: true, // Disable image optimization to reduce memory usage
   },
+  
+  // Build optimization
   swcMinify: true,
   compress: true,
   productionBrowserSourceMaps: false, // Disable source maps in production
@@ -19,6 +32,10 @@ const nextConfig = {
     optimizeCss: true,
     scrollRestoration: true,
   },
+  
+  // Configure source directories
+  dir: './src',
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   
   // Handle client-side routing
   async rewrites() {
