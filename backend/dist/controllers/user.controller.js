@@ -6,7 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAccount = exports.changePassword = exports.updateProfile = exports.getProfile = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const server_1 = require("../server");
-const validators_1 = require("@shared/validators");
+const zod_1 = require("zod");
+// Définition locale du validateur
+const updateUserValidator = zod_1.z.object({
+    firstName: zod_1.z.string().min(2).optional(),
+    lastName: zod_1.z.string().min(2).optional(),
+    phoneNumber: zod_1.z.string().min(10).optional(),
+    profileImageUrl: zod_1.z.string().url().optional().nullable()
+});
 const getProfile = async (req, res) => {
     try {
         const userId = req.user?.id;
@@ -82,7 +89,7 @@ const updateProfile = async (req, res) => {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
         // Validate request body
-        const validationResult = validators_1.updateUserValidator.safeParse(req.body);
+        const validationResult = updateUserValidator.safeParse(req.body);
         if (!validationResult.success) {
             return res.status(400).json({
                 error: 'Validation error',

@@ -238,3 +238,4 @@ export declare const ticketResponseValidator: z.ZodObject<{
 }, {
     message: string;
 }>;
+//# sourceMappingURL=validators.d.ts.map

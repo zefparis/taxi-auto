@@ -12,12 +12,15 @@
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
-    "build": "npm run build --workspaces",
+    "build": "npm run build:shared && npm run build:backend && npm run build:frontend",
+    "build:shared": "npm run build --workspace=shared",
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "start": "npm run start --workspace=backend",
     "test": "npm run test --workspaces",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces",
+    "clean": "rimraf */dist */build */node_modules",
+    "postinstall": "npm run build:shared"
   },
   "keywords": [
     "taxi",
@@ -33,6 +36,7 @@
   "devDependencies": {
     "concurrently": "^8.2.0",
     "husky": "^8.0.3",
-    "lint-staged": "^13.2.3"
+    "lint-staged": "^13.2.3",
+    "rimraf": "^5.0.1"
   }
 }

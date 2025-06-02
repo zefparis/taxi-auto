@@ -2,26 +2,72 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserRides = exports.getRideById = exports.cancelRide = exports.completeRide = exports.startRide = exports.driverArrived = exports.acceptRide = exports.requestRide = void 0;
 const server_1 = require("../server");
-const validators_1 = require("@shared/validators");
-const types_1 = require("@shared/types");
+const zod_1 = require("zod");
+// Définition locale du validateur
+const createRideValidator = zod_1.z.object({
+    pickupLocation: zod_1.z.string().min(5),
+    dropoffLocation: zod_1.z.string().min(5),
+    pickupLatitude: zod_1.z.number(),
+    pickupLongitude: zod_1.z.number(),
+    dropoffLatitude: zod_1.z.number(),
+    dropoffLongitude: zod_1.z.number(),
+    estimatedPrice: zod_1.z.number().positive().optional(),
+    estimatedDistance: zod_1.z.number().positive().optional(),
+    estimatedDuration: zod_1.z.number().positive().optional(),
+    rideType: zod_1.z.enum(['STANDARD', 'PREMIUM', 'LUXURY', 'VAN']).optional(),
+    paymentMethod: zod_1.z.enum(['CASH', 'CARD', 'WALLET']).optional()
+});
+// Définition locale des types
+var RideStatus;
+(function (RideStatus) {
+    RideStatus["REQUESTED"] = "REQUESTED";
+    RideStatus["PENDING"] = "PENDING";
+    RideStatus["ACCEPTED"] = "ACCEPTED";
+    RideStatus["ARRIVED"] = "ARRIVED";
+    RideStatus["DRIVER_ARRIVED"] = "DRIVER_ARRIVED";
+    RideStatus["IN_PROGRESS"] = "IN_PROGRESS";
+    RideStatus["COMPLETED"] = "COMPLETED";
+    RideStatus["CANCELLED"] = "CANCELLED";
+    RideStatus["NO_DRIVERS_AVAILABLE"] = "NO_DRIVERS_AVAILABLE";
+})(RideStatus || (RideStatus = {}));
+var PaymentStatus;
+(function (PaymentStatus) {
+    PaymentStatus["PENDING"] = "PENDING";
+    PaymentStatus["PAID"] = "PAID";
+    PaymentStatus["FAILED"] = "FAILED";
+    PaymentStatus["REFUNDED"] = "REFUNDED";
+    PaymentStatus["CANCELLED"] = "CANCELLED";
+    PaymentStatus["COMPLETED"] = "COMPLETED";
+})(PaymentStatus || (PaymentStatus = {}));
+var UserRole;
+(function (UserRole) {
+    UserRole["USER"] = "USER";
+    UserRole["CLIENT"] = "CLIENT";
+    UserRole["DRIVER"] = "DRIVER";
+    UserRole["ADMIN"] = "ADMIN";
+})(UserRole || (UserRole = {}));
 const server_2 = require("../server");
 const pricing_service_1 = require("../services/pricing.service");
 const matching_service_1 = require("../services/matching.service");
 const requestRide = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'Utilisateur non authentifié' });
-        }
         // Validate request body
-        const validationResult = validators_1.createRideValidator.safeParse(req.body);
+        const validationResult = createRideValidator.safeParse(req.body);
         if (!validationResult.success) {
             return res.status(400).json({
                 error: 'Validation error',
                 details: validationResult.error.errors
             });
         }
-        const { pickupLatitude, pickupLongitude, pickupAddress, destinationLatitude, destinationLongitude, destinationAddress, paymentMethod } = validationResult.data;
+        const { pickupLatitude, pickupLongitude, pickupLocation: pickupAddress, // Map pickupLocation to pickupAddress
+        dropoffLatitude: destinationLatitude, // Map dropoffLatitude to destinationLatitude
+        dropoffLongitude: destinationLongitude, // Map dropoffLongitude to destinationLongitude
+        dropoffLocation: destinationAddress, // Map dropoffLocation to destinationAddress
+        paymentMethod } = validationResult.data;
         // Get client ID
         const client = await server_1.prisma.client.findFirst({
             where: { userId }
@@ -35,10 +81,10 @@ const requestRide = async (req, res) => {
                 clientId: client.id,
                 status: {
                     in: [
-                        types_1.RideStatus.REQUESTED,
-                        types_1.RideStatus.ACCEPTED,
-                        types_1.RideStatus.ARRIVED,
-                        types_1.RideStatus.IN_PROGRESS
+                        RideStatus.REQUESTED,
+                        RideStatus.ACCEPTED,
+                        RideStatus.ARRIVED,
+                        RideStatus.IN_PROGRESS
                     ]
                 }
             }
@@ -61,7 +107,7 @@ const requestRide = async (req, res) => {
         const ride = await server_1.prisma.ride.create({
             data: {
                 clientId: client.id,
-                status: types_1.RideStatus.REQUESTED,
+                status: RideStatus.REQUESTED,
                 pickupLatitude,
                 pickupLongitude,
                 pickupAddress,
@@ -71,7 +117,7 @@ const requestRide = async (req, res) => {
                 estimatedPrice,
                 distance,
                 paymentMethod,
-                paymentStatus: types_1.PaymentStatus.PENDING
+                paymentStatus: PaymentStatus.PENDING
             }
         });
         // Find nearest drivers
@@ -101,7 +147,7 @@ const requestRide = async (req, res) => {
             await server_1.prisma.ride.update({
                 where: { id: ride.id },
                 data: {
-                    status: types_1.RideStatus.CANCELLED,
+                    status: RideStatus.CANCELLED,
                     cancelledAt: new Date(),
                     cancelReason: 'Aucun chauffeur disponible'
                 }
@@ -136,14 +182,14 @@ const requestRide = async (req, res) => {
 };
 exports.requestRide = requestRide;
 const acceptRide = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'Utilisateur non authentifié' });
-        }
-        // Check if user is a driver
-        if (req.user?.role !== types_1.UserRole.DRIVER) {
-            return res.status(403).json({ error: 'Seuls les chauffeurs peuvent accepter une course' });
+        // Check if user is a driver - we know req.user is defined at this point
+        if (req.user.role !== UserRole.DRIVER) {
+            return res.status(403).json({ error: 'Seuls les chauffeurs peuvent accepter des courses' });
         }
         const { rideId } = req.params;
         // Get driver ID
@@ -163,9 +209,9 @@ const acceptRide = async (req, res) => {
                 driverId: driver.id,
                 status: {
                     in: [
-                        types_1.RideStatus.ACCEPTED,
-                        types_1.RideStatus.ARRIVED,
-                        types_1.RideStatus.IN_PROGRESS
+                        RideStatus.ACCEPTED,
+                        RideStatus.ARRIVED,
+                        RideStatus.IN_PROGRESS
                     ]
                 }
             }
@@ -195,7 +241,7 @@ const acceptRide = async (req, res) => {
             return res.status(404).json({ error: 'Course non trouvée' });
         }
         // Check if ride is still in REQUESTED status
-        if (ride.status !== types_1.RideStatus.REQUESTED) {
+        if (ride.status !== RideStatus.REQUESTED) {
             return res.status(400).json({ error: 'Cette course n\'est plus disponible' });
         }
         // Update ride
@@ -203,7 +249,7 @@ const acceptRide = async (req, res) => {
             where: { id: rideId },
             data: {
                 driverId: driver.id,
-                status: types_1.RideStatus.ACCEPTED,
+                status: RideStatus.ACCEPTED,
                 acceptedAt: new Date()
             }
         });
@@ -219,14 +265,16 @@ const acceptRide = async (req, res) => {
             rideId: ride.id,
             driver: {
                 id: driver.id,
-                firstName: req.user.firstName,
-                lastName: req.user.lastName,
-                phoneNumber: req.user.phoneNumber,
-                profileImageUrl: req.user.profileImageUrl,
+                user: {
+                    firstName: driver.user?.firstName || '',
+                    lastName: driver.user?.lastName || '',
+                    phoneNumber: driver.user?.phoneNumber || '',
+                    profileImageUrl: driver.user?.profileImageUrl
+                },
                 vehicleMake: driver.vehicleMake,
                 vehicleModel: driver.vehicleModel,
                 vehicleColor: driver.vehicleColor,
-                vehiclePlateNumber: driver.vehiclePlateNumber,
+                licensePlate: driver.licensePlate,
                 averageRating: driver.averageRating
             },
             acceptedAt: updatedRide.acceptedAt
@@ -266,13 +314,14 @@ const acceptRide = async (req, res) => {
 };
 exports.acceptRide = acceptRide;
 const driverArrived = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'Utilisateur non authentifié' });
-        }
+        // User is already authenticated at this point
         // Check if user is a driver
-        if (req.user?.role !== types_1.UserRole.DRIVER) {
+        if (req.user?.role !== UserRole.DRIVER) {
             return res.status(403).json({ error: 'Seuls les chauffeurs peuvent signaler leur arrivée' });
         }
         const { rideId } = req.params;
@@ -295,14 +344,14 @@ const driverArrived = async (req, res) => {
             return res.status(403).json({ error: 'Cette course ne vous appartient pas' });
         }
         // Check if ride is in ACCEPTED status
-        if (ride.status !== types_1.RideStatus.ACCEPTED) {
+        if (ride.status !== RideStatus.ACCEPTED) {
             return res.status(400).json({ error: 'Vous ne pouvez pas signaler votre arrivée pour cette course' });
         }
         // Update ride
         const updatedRide = await server_1.prisma.ride.update({
             where: { id: rideId },
             data: {
-                status: types_1.RideStatus.ARRIVED
+                status: RideStatus.ARRIVED
             }
         });
         // Notify client
@@ -324,13 +373,16 @@ const driverArrived = async (req, res) => {
 };
 exports.driverArrived = driverArrived;
 const startRide = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
-        // Check if user is a driver
-        if (req.user?.role !== types_1.UserRole.DRIVER) {
+        // Check if user is a driver - we know req.user is defined at this point
+        if (req.user.role !== UserRole.DRIVER) {
             return res.status(403).json({ error: 'Seuls les chauffeurs peuvent démarrer une course' });
         }
         const { rideId } = req.params;
@@ -353,14 +405,14 @@ const startRide = async (req, res) => {
             return res.status(403).json({ error: 'Cette course ne vous appartient pas' });
         }
         // Check if ride is in ARRIVED status
-        if (ride.status !== types_1.RideStatus.ARRIVED) {
+        if (ride.status !== RideStatus.ARRIVED) {
             return res.status(400).json({ error: 'Vous ne pouvez pas démarrer cette course' });
         }
         // Update ride
         const updatedRide = await server_1.prisma.ride.update({
             where: { id: rideId },
             data: {
-                status: types_1.RideStatus.IN_PROGRESS,
+                status: RideStatus.IN_PROGRESS,
                 startedAt: new Date()
             }
         });
@@ -385,13 +437,16 @@ const startRide = async (req, res) => {
 };
 exports.startRide = startRide;
 const completeRide = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
-        // Check if user is a driver
-        if (req.user?.role !== types_1.UserRole.DRIVER) {
+        // Check if user is a driver - we know req.user is defined at this point
+        if (req.user.role !== UserRole.DRIVER) {
             return res.status(403).json({ error: 'Seuls les chauffeurs peuvent terminer une course' });
         }
         const { rideId } = req.params;
@@ -414,7 +469,7 @@ const completeRide = async (req, res) => {
             return res.status(403).json({ error: 'Cette course ne vous appartient pas' });
         }
         // Check if ride is in IN_PROGRESS status
-        if (ride.status !== types_1.RideStatus.IN_PROGRESS) {
+        if (ride.status !== RideStatus.IN_PROGRESS) {
             return res.status(400).json({ error: 'Vous ne pouvez pas terminer cette course' });
         }
         const completedAt = new Date();
@@ -427,7 +482,7 @@ const completeRide = async (req, res) => {
         const updatedRide = await server_1.prisma.ride.update({
             where: { id: rideId },
             data: {
-                status: types_1.RideStatus.COMPLETED,
+                status: RideStatus.COMPLETED,
                 completedAt,
                 duration: durationInMinutes,
                 finalPrice
@@ -447,7 +502,7 @@ const completeRide = async (req, res) => {
             await server_1.prisma.ride.update({
                 where: { id: rideId },
                 data: {
-                    paymentStatus: types_1.PaymentStatus.COMPLETED
+                    paymentStatus: PaymentStatus.COMPLETED
                 }
             });
         }
@@ -476,8 +531,11 @@ const completeRide = async (req, res) => {
 };
 exports.completeRide = completeRide;
 const cancelRide = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
@@ -486,7 +544,7 @@ const cancelRide = async (req, res) => {
         // Get user role specific ID (client or driver)
         let clientId = null;
         let driverId = null;
-        if (req.user?.role === types_1.UserRole.CLIENT) {
+        if (req.user?.role === UserRole.CLIENT) {
             const client = await server_1.prisma.client.findFirst({
                 where: { userId }
             });
@@ -495,7 +553,7 @@ const cancelRide = async (req, res) => {
             }
             clientId = client.id;
         }
-        else if (req.user?.role === types_1.UserRole.DRIVER) {
+        else if (req.user?.role === UserRole.DRIVER) {
             const driver = await server_1.prisma.driver.findFirst({
                 where: { userId }
             });
@@ -512,26 +570,26 @@ const cancelRide = async (req, res) => {
             return res.status(404).json({ error: 'Course non trouvée' });
         }
         // Check if ride belongs to user
-        if ((req.user?.role === types_1.UserRole.CLIENT && ride.clientId !== clientId) ||
-            (req.user?.role === types_1.UserRole.DRIVER && ride.driverId !== driverId)) {
+        if ((req.user?.role === UserRole.CLIENT && ride.clientId !== clientId) ||
+            (req.user?.role === UserRole.DRIVER && ride.driverId !== driverId)) {
             return res.status(403).json({ error: 'Cette course ne vous appartient pas' });
         }
         // Check if ride can be cancelled
-        if (ride.status === types_1.RideStatus.COMPLETED ||
-            ride.status === types_1.RideStatus.CANCELLED) {
+        if (ride.status === RideStatus.COMPLETED ||
+            ride.status === RideStatus.CANCELLED) {
             return res.status(400).json({ error: 'Cette course ne peut pas être annulée' });
         }
         // Update ride
         const updatedRide = await server_1.prisma.ride.update({
             where: { id: rideId },
             data: {
-                status: types_1.RideStatus.CANCELLED,
+                status: RideStatus.CANCELLED,
                 cancelledAt: new Date(),
                 cancelReason: reason || 'Annulée par l\'utilisateur'
             }
         });
         // If driver cancelled, update availability
-        if (req.user?.role === types_1.UserRole.DRIVER && ride.driverId) {
+        if (req.user?.role === UserRole.DRIVER && ride.driverId) {
             await server_1.prisma.driver.update({
                 where: { id: ride.driverId },
                 data: {
@@ -540,7 +598,7 @@ const cancelRide = async (req, res) => {
             });
         }
         // Notify other party
-        if (req.user?.role === types_1.UserRole.CLIENT) {
+        if (req.user?.role === UserRole.CLIENT) {
             if (ride.driverId) {
                 server_2.io.to(`driver:${ride.driverId}`).emit('ride:cancelled', {
                     rideId: ride.id,
@@ -573,8 +631,11 @@ const cancelRide = async (req, res) => {
 };
 exports.cancelRide = cancelRide;
 const getRideById = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
@@ -582,7 +643,7 @@ const getRideById = async (req, res) => {
         // Get user role specific ID (client or driver)
         let clientId = null;
         let driverId = null;
-        if (req.user?.role === types_1.UserRole.CLIENT) {
+        if (req.user?.role === UserRole.CLIENT) {
             const client = await server_1.prisma.client.findFirst({
                 where: { userId }
             });
@@ -591,7 +652,7 @@ const getRideById = async (req, res) => {
             }
             clientId = client.id;
         }
-        else if (req.user?.role === types_1.UserRole.DRIVER) {
+        else if (req.user?.role === UserRole.DRIVER) {
             const driver = await server_1.prisma.driver.findFirst({
                 where: { userId }
             });
@@ -616,7 +677,7 @@ const getRideById = async (req, res) => {
                         }
                     }
                 },
-                driver: req.user?.role === types_1.UserRole.CLIENT || req.user?.role === types_1.UserRole.ADMIN ? {
+                driver: req.user?.role === UserRole.CLIENT || req.user?.role === UserRole.ADMIN ? {
                     include: {
                         user: {
                             select: {
@@ -640,9 +701,13 @@ const getRideById = async (req, res) => {
             return res.status(404).json({ error: 'Course non trouvée' });
         }
         // Check if user is authorized to view this ride
-        if (req.user?.role === types_1.UserRole.CLIENT && ride.clientId !== clientId &&
-            req.user?.role === types_1.UserRole.DRIVER && ride.driverId !== driverId &&
-            req.user?.role !== types_1.UserRole.ADMIN) {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const isAuthorized = ((req.user.role === UserRole.CLIENT && ride.clientId === clientId) ||
+            (req.user.role === UserRole.DRIVER && ride.driverId === driverId) ||
+            req.user.role === UserRole.ADMIN);
+        if (!isAuthorized) {
             return res.status(403).json({ error: 'Vous n\'êtes pas autorisé à voir cette course' });
         }
         res.status(200).json({ ride });
@@ -654,8 +719,11 @@ const getRideById = async (req, res) => {
 };
 exports.getRideById = getRideById;
 const getUserRides = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+    const userId = req.user.id;
     try {
-        const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
@@ -663,7 +731,7 @@ const getUserRides = async (req, res) => {
         // Get user role specific ID (client or driver)
         let clientId = null;
         let driverId = null;
-        if (req.user?.role === types_1.UserRole.CLIENT) {
+        if (req.user?.role === UserRole.CLIENT) {
             const client = await server_1.prisma.client.findFirst({
                 where: { userId }
             });
@@ -672,7 +740,7 @@ const getUserRides = async (req, res) => {
             }
             clientId = client.id;
         }
-        else if (req.user?.role === types_1.UserRole.DRIVER) {
+        else if (req.user?.role === UserRole.DRIVER) {
             const driver = await server_1.prisma.driver.findFirst({
                 where: { userId }
             });
@@ -683,10 +751,10 @@ const getUserRides = async (req, res) => {
         }
         // Build query
         const query = {};
-        if (req.user?.role === types_1.UserRole.CLIENT) {
+        if (req.user?.role === UserRole.CLIENT) {
             query.clientId = clientId;
         }
-        else if (req.user?.role === types_1.UserRole.DRIVER) {
+        else if (req.user?.role === UserRole.DRIVER) {
             query.driverId = driverId;
         }
         if (status) {

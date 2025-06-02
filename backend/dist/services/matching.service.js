@@ -1,20 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.calculateHaversineDistance = exports.findNearestDrivers = void 0;
+exports.findNearestDrivers = void 0;
 const openai_1 = require("openai");
 const server_1 = require("../server");
 // Initialize OpenAI client
-const openai = new openai_1.OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+    const configuration = new openai_1.Configuration({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+    openai = new openai_1.OpenAIApi(configuration);
+}
+else {
+    console.warn('OPENAI_API_KEY is not set. AI matching will be disabled.');
+}
 /**
  * Find nearest available drivers to a pickup location
- *
- * @param pickupLatitude Pickup latitude
- * @param pickupLongitude Pickup longitude
- * @param maxDistance Maximum distance in kilometers (default: 5km)
- * @param limit Maximum number of drivers to return (default: 5)
- * @returns Array of nearest available drivers
  */
 const findNearestDrivers = async (pickupLatitude, pickupLongitude, maxDistance = 5, limit = 5) => {
     try {
@@ -27,7 +28,6 @@ const findNearestDrivers = async (pickupLatitude, pickupLongitude, maxDistance =
                     isActive: true,
                     isVerified: true
                 },
-                // Only include drivers with location data
                 currentLatitude: { not: null },
                 currentLongitude: { not: null }
             },
@@ -46,31 +46,34 @@ const findNearestDrivers = async (pickupLatitude, pickupLongitude, maxDistance =
         if (availableDrivers.length === 0) {
             return [];
         }
-        // Calculate distance for each driver
-        const driversWithDistance = availableDrivers.map(driver => {
-            const distance = (0, exports.calculateHaversineDistance)(pickupLatitude, pickupLongitude, driver.currentLatitude, driver.currentLongitude);
-            return {
-                ...driver,
-                distance
-            };
-        });
-        // Filter drivers within maxDistance
-        const nearbyDrivers = driversWithDistance.filter(driver => driver.distance <= maxDistance);
+        // Calculate distance for each driver and filter by maxDistance
+        const nearbyDrivers = availableDrivers
+            .filter((driver) => {
+            if (!driver.currentLatitude || !driver.currentLongitude)
+                return false;
+            const distance = calculateHaversineDistance(pickupLatitude, pickupLongitude, driver.currentLatitude, driver.currentLongitude);
+            return distance <= maxDistance;
+        })
+            .map((driver) => ({
+            ...driver,
+            currentLatitude: driver.currentLatitude,
+            currentLongitude: driver.currentLongitude,
+            distance: calculateHaversineDistance(pickupLatitude, pickupLongitude, driver.currentLatitude, driver.currentLongitude),
+        }));
         if (nearbyDrivers.length === 0) {
             return [];
         }
-        // If AI matching is enabled, use it to sort drivers
-        if (process.env.ENABLE_AI_MATCHING === 'true' && process.env.OPENAI_API_KEY) {
+        // If AI matching is enabled and we have drivers, use it to sort them
+        if (process.env.ENABLE_AI_MATCHING === 'true' && openai && nearbyDrivers.length > 1) {
             try {
                 return await aiSortDrivers(nearbyDrivers, pickupLatitude, pickupLongitude, limit);
             }
             catch (error) {
-                console.error('Error in AI driver matching:', error);
-                // Fall back to distance-based sorting
+                console.error('Error in AI driver matching, falling back to distance-based sorting:', error);
             }
         }
         // Sort by distance and return top results
-        return nearbyDrivers
+        return [...nearbyDrivers]
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
     }
@@ -82,124 +85,112 @@ const findNearestDrivers = async (pickupLatitude, pickupLongitude, maxDistance =
 exports.findNearestDrivers = findNearestDrivers;
 /**
  * Calculate distance between two points using Haversine formula
- *
- * @param lat1 First point latitude
- * @param lon1 First point longitude
- * @param lat2 Second point latitude
- * @param lon2 Second point longitude
- * @returns Distance in kilometers
  */
-const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-};
-exports.calculateHaversineDistance = calculateHaversineDistance;
+    return R * c; // Distance in km
+}
+function toRad(value) {
+    return (value * Math.PI) / 180;
+}
 /**
  * Use AI to sort drivers based on multiple factors
- *
- * @param drivers Array of drivers with distance
- * @param pickupLatitude Pickup latitude
- * @param pickupLongitude Pickup longitude
- * @param limit Maximum number of drivers to return
- * @returns Sorted array of drivers
  */
-const aiSortDrivers = async (drivers, pickupLatitude, pickupLongitude, limit) => {
+async function aiSortDrivers(drivers, pickupLatitude, pickupLongitude, limit) {
+    if (!openai) {
+        throw new Error('OpenAI client not initialized');
+    }
     try {
-        // Get driver ride history and ratings
-        const driverIds = drivers.map(d => d.id);
-        // Get completed ride counts for each driver
-        const driverRideCounts = await server_1.prisma.ride.groupBy({
-            by: ['driverId'],
-            where: {
-                driverId: { in: driverIds },
-                status: 'COMPLETED'
-            },
-            _count: {
-                id: true
-            }
+        // Prepare driver data for the AI prompt
+        const driverInfo = drivers.map(driver => {
+            const user = driver.user; // Cast user to any to avoid TypeScript errors
+            return {
+                id: driver.id,
+                name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Chauffeur',
+                rating: driver.rating || 4.5,
+                completedRides: driver.completedRides || 0,
+                isPreferred: !!driver.isPreferred,
+                distance: driver.distance,
+                driver
+            };
         });
-        // Create a map of driver ID to ride count
-        const rideCountMap = driverRideCounts.reduce((map, item) => {
-            map[item.driverId] = item._count.id;
-            return map;
-        }, {});
-        // Prepare driver data for AI
-        const driverData = drivers.map(driver => ({
-            id: driver.id,
-            distance: driver.distance,
-            rating: driver.averageRating || 0,
-            completedRides: rideCountMap[driver.id] || 0,
-            vehicleType: driver.vehicleType,
-            // Add time since last activity (mock data)
-            minutesSinceLastActivity: Math.floor(Math.random() * 60)
-        }));
-        // Current time context
-        const currentHour = new Date().getHours();
-        const isRushHour = (currentHour >= 7 && currentHour <= 9) ||
-            (currentHour >= 17 && currentHour <= 19);
-        // Prepare prompt for OpenAI
-        const prompt = `
-      Rank these taxi drivers for a customer at location (${pickupLatitude}, ${pickupLongitude}) 
-      based on the following factors:
-      - Distance to pickup location
-      - Driver rating
-      - Number of completed rides
-      - Time since last activity
-      - Vehicle type suitability
-      
-      Current context:
-      - Time: ${new Date().toLocaleTimeString()}
-      - Is rush hour: ${isRushHour}
-      
-      Driver data:
-      ${JSON.stringify(driverData, null, 2)}
-      
-      Return a JSON array of driver IDs in order of best match first.
-      Format: ["driver_id1", "driver_id2", ...]
-    `;
-        const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [
-                { role: "system", content: "You are a driver matching algorithm for a taxi service. Respond only with a JSON array of driver IDs." },
-                { role: "user", content: prompt }
-            ],
+        const prompt = `Rank these taxi drivers based on the following criteria:
+    - Distance from pickup (shorter is better)
+    - Driver rating (higher is better)
+    - Number of completed rides (higher is better)
+    - Preferred status (if applicable)
+
+    Driver data (JSON format):
+    ${JSON.stringify(driverInfo, null, 2)}
+
+    Return a JSON array of driver IDs in order of best match to worst match.`;
+        const response = await openai.createCompletion({
+            model: "text-davinci-003",
+            prompt,
             temperature: 0.3,
-            max_tokens: 150
+            max_tokens: 500,
         });
+        const content = response.data.choices[0]?.text?.trim();
+        if (!content) {
+            throw new Error('No content in OpenAI response');
+        }
         // Parse the response
-        const content = response.choices[0].message.content?.trim() || "[]";
-        const rankedIds = JSON.parse(content);
+        let rankedIds = [];
+        try {
+            const parsedContent = JSON.parse(content);
+            if (Array.isArray(parsedContent)) {
+                rankedIds = parsedContent.filter((id) => typeof id === 'string');
+            }
+            if (rankedIds.length === 0) {
+                throw new Error('No valid driver IDs found in response');
+            }
+        }
+        catch (e) {
+            console.error('Failed to parse AI response:', e);
+            throw new Error('Invalid response format from AI');
+        }
         // Create a map for O(1) lookup of drivers
-        const driverMap = drivers.reduce((map, driver) => {
-            map[driver.id] = driver;
-            return map;
-        }, {});
+        const driverMap = new Map(drivers.map(driver => [driver.id, driver]));
         // Sort drivers based on AI ranking
-        const sortedDrivers = rankedIds
-            .filter(id => driverMap[id]) // Filter out any IDs not in our original list
-            .map(id => driverMap[id])
-            .slice(0, limit);
-        // If AI didn't return enough results, add remaining drivers sorted by distance
-        if (sortedDrivers.length < Math.min(limit, drivers.length)) {
-            const remainingDrivers = drivers
-                .filter(d => !sortedDrivers.some(sd => sd.id === d.id))
-                .sort((a, b) => a.distance - b.distance);
-            sortedDrivers.push(...remainingDrivers.slice(0, limit - sortedDrivers.length));
+        const sortedDrivers = [];
+        const usedIds = new Set();
+        // Add drivers in the order returned by AI
+        for (const id of rankedIds) {
+            // Ensure id is treated as string
+            const driverId = String(id);
+            const driver = driverMap.get(driverId);
+            if (driver && !usedIds.has(driverId)) {
+                sortedDrivers.push(driver);
+                usedIds.add(driverId);
+            }
+            if (sortedDrivers.length >= limit)
+                break;
+        }
+        // Add any remaining drivers that weren't included in the AI response
+        if (sortedDrivers.length < limit) {
+            for (const driver of drivers) {
+                const driverId = String(driver.id); // Ensure id is treated as string
+                if (!usedIds.has(driverId)) {
+                    sortedDrivers.push(driver);
+                    if (sortedDrivers.length >= limit)
+                        break;
+                }
+            }
         }
         return sortedDrivers;
     }
     catch (error) {
-        console.error('Error in AI driver sorting:', error);
+        console.error('Error in AI driver matching:', error);
         // Fall back to distance-based sorting
-        return drivers
+        return [...drivers]
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
     }
-};
+}
 //# sourceMappingURL=matching.service.js.map

@@ -1,6 +1,5 @@
-import { Request, Response } from 'express';
-export declare const register: (req: Request, res: Response) => Promise<any>;
-export declare const login: (req: Request, res: Response) => Promise<any>;
-export declare const refreshToken: (req: Request, res: Response) => Promise<any>;
-export declare const logout: (req: Request, res: Response) => Promise<any>;
-export declare const registerDriver: (req: Request, res: Response) => Promise<void>;
+export declare const register: (req: any, res: any) => Promise<any>;
+export declare const login: (req: any, res: any) => Promise<any>;
+export declare const refreshToken: (req: any, res: any) => Promise<any>;
+export declare const logout: (req: any, res: any) => Promise<any>;
+export declare const registerDriver: (req: any, res: any) => Promise<void>;

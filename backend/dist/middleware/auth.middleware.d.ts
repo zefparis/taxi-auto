@@ -11,5 +11,5 @@ declare global {
         }
     }
 }
-export declare const authenticate: (req: Request, res: Response, next: NextFunction) => Promise<any>;
-export declare const authorize: (...roles: UserRole[]) => (req: Request, res: Response, next: NextFunction) => any;
+export declare const authenticate: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>;
+export declare const authorize: (...roles: UserRole[]) => (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;

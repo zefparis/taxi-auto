@@ -1,8 +1,8 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
-    "lib": ["es2020"],
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
@@ -16,12 +16,12 @@
     "paths": {
       "@/*": ["src/*"],
       "@shared/*": ["../shared/src/*"]
-    }
+    },
+    "types": ["node", "@types/node", "@types/express"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../shared/src/**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts"],
-  "typeRoots": [
-    "./node_modules/@types",
-    "./src/types"
+  "references": [
+    { "path": "../shared" }
   ]
 }

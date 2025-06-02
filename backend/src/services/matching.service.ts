@@ -6,7 +6,8 @@ interface UserProfile {
   firstName: string | null;
   lastName: string | null;
   phoneNumber: string | null;
-  profileImageUrl: string | null;
+  profileImageUrl?: string | null;
+  [key: string]: any; // Allow additional properties
 }
 
 interface Driver {
@@ -80,30 +81,29 @@ export const findNearestDrivers = async (
       return [];
     }
     
-    // Calculate distance for each driver
-    const driversWithDistance = availableDrivers.map((driver): DriverWithDistance => {
-      if (driver.currentLatitude === null || driver.currentLongitude === null) {
-        throw new Error('Driver location is required');
-      }
-      
+    // Calculate distance for each driver and filter by maxDistance
+    const nearbyDrivers = availableDrivers
+    .filter((driver: any) => {
+      if (!driver.currentLatitude || !driver.currentLongitude) return false;
       const distance = calculateHaversineDistance(
         pickupLatitude,
         pickupLongitude,
         driver.currentLatitude,
         driver.currentLongitude
       );
-      
-      return {
-        ...driver,
-        distance,
-        currentLatitude: driver.currentLatitude,
-        currentLongitude: driver.currentLongitude
-      };
-    });
-    
-    // Filter drivers within maxDistance
-    const nearbyDrivers = driversWithDistance.filter(driver => driver.distance <= maxDistance);
-    
+      return distance <= maxDistance;
+    })
+    .map((driver: any) => ({
+      ...driver,
+      currentLatitude: driver.currentLatitude as number,
+      currentLongitude: driver.currentLongitude as number,
+      distance: calculateHaversineDistance(
+        pickupLatitude,
+        pickupLongitude,
+        driver.currentLatitude as number,
+        driver.currentLongitude as number
+      ),
+    }));
     if (nearbyDrivers.length === 0) {
       return [];
     }
@@ -111,7 +111,7 @@ export const findNearestDrivers = async (
     // If AI matching is enabled and we have drivers, use it to sort them
     if (process.env.ENABLE_AI_MATCHING === 'true' && openai && nearbyDrivers.length > 1) {
       try {
-        return await aiSortDrivers(nearbyDrivers, pickupLatitude, pickupLongitude, limit);
+        return await aiSortDrivers(nearbyDrivers as DriverWithDistance[], pickupLatitude, pickupLongitude, limit);
       } catch (error) {
         console.error('Error in AI driver matching, falling back to distance-based sorting:', error);
       }
@@ -166,26 +166,29 @@ async function aiSortDrivers(
 
   try {
     // Prepare driver data for the AI prompt
-    const driverData = drivers.map(driver => ({
-      id: driver.id,
-      name: `${driver.user.firstName} ${driver.user.lastName}`.trim(),
-      rating: driver.rating || 0,
-      completedRides: driver.completedRides || 0,
-      distance: parseFloat(driver.distance.toFixed(2)),
-      isPreferred: Boolean(driver.isPreferred)
-    }));
+    const driverInfo = drivers.map(driver => {
+      const user = driver.user as any; // Cast user to any to avoid TypeScript errors
+      return {
+        id: driver.id,
+        name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Chauffeur',
+        rating: (driver as any).rating || 4.5,
+        completedRides: (driver as any).completedRides || 0,
+        isPreferred: !!(driver as any).isPreferred,
+        distance: driver.distance,
+        driver
+      };
+    });
 
     const prompt = `Rank these taxi drivers based on the following criteria:
     - Distance from pickup (shorter is better)
-    - Driver rating (higher is better, 0-5 scale)
-    - Number of completed rides (more is better)
-    - Preferred status (preferred is better)
+    - Driver rating (higher is better)
+    - Number of completed rides (higher is better)
+    - Preferred status (if applicable)
 
-Driver data (in no particular order):
-${JSON.stringify(driverData, null, 2)}
+    Driver data (JSON format):
+    ${JSON.stringify(driverInfo, null, 2)}
 
-Return a JSON array of driver IDs in order of best match first.
-Format: ["driver_id1", "driver_id2", ...]`;
+    Return a JSON array of driver IDs in order of best match to worst match.`;
 
     const response = await openai.createCompletion({
       model: "text-davinci-003",
@@ -204,7 +207,7 @@ Format: ["driver_id1", "driver_id2", ...]`;
     try {
       const parsedContent = JSON.parse(content);
       if (Array.isArray(parsedContent)) {
-        rankedIds = parsedContent.filter((id: unknown) => typeof id === 'string');
+        rankedIds = parsedContent.filter((id): id is string => typeof id === 'string');
       }
       if (rankedIds.length === 0) {
         throw new Error('No valid driver IDs found in response');
@@ -223,10 +226,12 @@ Format: ["driver_id1", "driver_id2", ...]`;
 
     // Add drivers in the order returned by AI
     for (const id of rankedIds) {
-      const driver = driverMap.get(id);
-      if (driver && !usedIds.has(id)) {
+      // Ensure id is treated as string
+      const driverId = String(id);
+      const driver = driverMap.get(driverId);
+      if (driver && !usedIds.has(driverId)) {
         sortedDrivers.push(driver);
-        usedIds.add(id);
+        usedIds.add(driverId);
       }
       if (sortedDrivers.length >= limit) break;
     }
@@ -234,7 +239,8 @@ Format: ["driver_id1", "driver_id2", ...]`;
     // Add any remaining drivers that weren't included in the AI response
     if (sortedDrivers.length < limit) {
       for (const driver of drivers) {
-        if (!usedIds.has(driver.id)) {
+        const driverId = String(driver.id); // Ensure id is treated as string
+        if (!usedIds.has(driverId)) {
           sortedDrivers.push(driver);
           if (sortedDrivers.length >= limit) break;
         }

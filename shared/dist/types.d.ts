@@ -230,3 +230,4 @@ export interface RegisterRequest {
     phoneNumber: string;
     role: UserRole;
 }
+//# sourceMappingURL=types.d.ts.map

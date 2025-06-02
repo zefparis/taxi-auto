@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ERROR_MESSAGES = exports.APP_CONSTANTS = exports.STORAGE_KEYS = exports.SOCKET_EVENTS = exports.API_ENDPOINTS = void 0;
 // API Endpoints
-exports.API_ENDPOINTS = {
+export const API_ENDPOINTS = {
     AUTH: {
         LOGIN: '/api/auth/login',
         REGISTER: '/api/auth/register',
@@ -63,7 +60,7 @@ exports.API_ENDPOINTS = {
     },
 };
 // Socket.IO Events
-exports.SOCKET_EVENTS = {
+export const SOCKET_EVENTS = {
     // Connection events
     CONNECT: 'connect',
     DISCONNECT: 'disconnect',
@@ -94,7 +91,7 @@ exports.SOCKET_EVENTS = {
     PAYMENT_FAILED: 'payment:failed',
 };
 // Local Storage Keys
-exports.STORAGE_KEYS = {
+export const STORAGE_KEYS = {
     ACCESS_TOKEN: 'taxi_express_access_token',
     REFRESH_TOKEN: 'taxi_express_refresh_token',
     USER: 'taxi_express_user',
@@ -103,7 +100,7 @@ exports.STORAGE_KEYS = {
     LAST_LOCATION: 'taxi_express_last_location',
 };
 // App Constants
-exports.APP_CONSTANTS = {
+export const APP_CONSTANTS = {
     DEFAULT_LANGUAGE: 'fr',
     SUPPORTED_LANGUAGES: ['fr', 'en', 'ln', 'sw'],
     DEFAULT_CURRENCY: 'CDF',
@@ -134,7 +131,7 @@ exports.APP_CONSTANTS = {
     },
 };
 // Error Messages
-exports.ERROR_MESSAGES = {
+export const ERROR_MESSAGES = {
     GENERIC: 'Une erreur est survenue. Veuillez réessayer.',
     NETWORK: 'Erreur de connexion. Veuillez vérifier votre connexion internet.',
     UNAUTHORIZED: 'Vous n\'êtes pas autorisé à effectuer cette action.',

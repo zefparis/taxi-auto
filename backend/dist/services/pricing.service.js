@@ -3,9 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculatePrice = void 0;
 const openai_1 = require("openai");
 // Initialize OpenAI client
-const openai = new openai_1.OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+    const configuration = new openai_1.Configuration({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+    openai = new openai_1.OpenAIApi(configuration);
+}
+else {
+    console.warn('OPENAI_API_KEY is not set. Dynamic pricing will use default factors.');
+}
 /**
  * Calculate ride price based on distance, time, and market conditions
  * Uses a combination of base pricing and AI-powered dynamic pricing
@@ -23,7 +30,15 @@ const calculatePrice = async (distance, vehicleType = 'STANDARD') => {
         // Apply AI dynamic pricing if available
         if (process.env.ENABLE_AI_PRICING === 'true' && process.env.OPENAI_API_KEY) {
             try {
-                const dynamicFactor = await getDynamicPricingFactor(distance, vehicleType);
+                let dynamicFactor = 1.0;
+                if (openai) {
+                    try {
+                        dynamicFactor = await getDynamicPricingFactor(distance, vehicleType);
+                    }
+                    catch (error) {
+                        console.error('Error getting dynamic pricing factor:', error);
+                    }
+                }
                 basePrice = Math.round(basePrice * dynamicFactor);
             }
             catch (error) {
@@ -118,39 +133,22 @@ const calculateBasePrice = (distance, vehicleType, pricingConfig) => {
  * Get dynamic pricing factor using AI
  */
 const getDynamicPricingFactor = async (distance, vehicleType) => {
+    if (!openai) {
+        throw new Error('OpenAI client not initialized');
+    }
     try {
-        const currentHour = new Date().getHours();
-        const currentDay = new Date().getDay(); // 0 = Sunday, 6 = Saturday
-        const isWeekend = currentDay === 0 || currentDay === 6;
-        // Get current weather (mock data - would be from a weather API)
-        const weather = 'normal'; // Could be 'rainy', 'normal', etc.
-        // Get current demand (mock data - would be from database)
-        const currentDemand = 'medium'; // Could be 'low', 'medium', 'high'
-        // Prepare prompt for OpenAI
-        const prompt = `
-      Calculate a fair dynamic pricing factor for a taxi ride in Kinshasa, DRC with the following parameters:
-      - Distance: ${distance} km
-      - Vehicle type: ${vehicleType}
-      - Current hour: ${currentHour}
-      - Is weekend: ${isWeekend}
-      - Weather: ${weather}
-      - Current demand: ${currentDemand}
-      
-      Consider factors like time of day, weather conditions, and current demand.
-      Return only a single number between 0.8 and 2.0 representing the pricing multiplier.
-    `;
-        const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [
-                { role: "system", content: "You are a pricing algorithm for a taxi service in Kinshasa, DRC. Respond only with a number." },
-                { role: "user", content: prompt }
-            ],
+        const response = await openai.createCompletion({
+            model: "text-davinci-003",
+            prompt: `Calculate dynamic pricing factor for a ${vehicleType} ride of ${distance}km. Consider time of day, demand, and other factors. Return only a number between 0.8 and 2.0.`,
             temperature: 0.3,
             max_tokens: 10
         });
-        const factor = parseFloat(response.choices[0].message.content?.trim() || "1.0");
-        // Ensure factor is within reasonable bounds
-        return Math.min(Math.max(factor, 0.8), 2.0);
+        const content = response.data.choices[0]?.text?.trim();
+        if (!content) {
+            throw new Error('No content in OpenAI response');
+        }
+        const factor = parseFloat(content) || 1.0;
+        return Math.min(Math.max(factor, 0.8), 2.0); // Clamp between 0.8 and 2.0
     }
     catch (error) {
         console.error('Error in dynamic pricing:', error);
