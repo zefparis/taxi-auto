@@ -7,7 +7,15 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone, FiTruck, FiFileText, FiCalendar } from 'react-icons/fi';
-import styles from './driver-register.module.css';
+// Styles en ligne pour éviter l'import manquant
+const styles = {
+  container: 'min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8',
+  progressBarContainer: 'mb-8',
+  progressBar: 'h-2 bg-gray-200 rounded-full overflow-hidden',
+  stepIndicator: 'flex items-center justify-between mt-2',
+  step: 'text-sm font-medium',
+  // Ajoutez d'autres styles si nécessaire
+};
 
 // Driver registration form validation schema
 const driverRegisterSchema = z.object({
@@ -55,12 +63,7 @@ export default function DriverRegisterPage() {
   const [currentStep, setCurrentStep] = React.useState(1);
   const totalSteps = 3;
 
-  const {
-    register,
-    handleSubmit,
-    trigger,
-    formState: { errors, isValid }
-  } = useForm<DriverRegisterFormData>({
+  const { register, handleSubmit, formState: { errors }, trigger } = useForm<DriverRegisterFormData>({
     resolver: zodResolver(driverRegisterSchema),
     mode: 'onChange',
     defaultValues: {
@@ -104,7 +107,7 @@ export default function DriverRegisterPage() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const onSubmit: SubmitHandler<DriverRegisterFormData> = async (data) => {
+  const onSubmit: SubmitHandler<DriverRegisterFormData> = async (formData) => {
     setIsLoading(true);
     setError(null);
     

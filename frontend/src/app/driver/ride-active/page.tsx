@@ -49,16 +49,16 @@ export default function DriverActiveRidePage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const handleArriveAtPickup = () => {
+  const handleArriveAtPickup = (): void => {
     setCurrentStep('waitingForClient');
   };
 
-  const handleStartRide = () => {
+  const handleStartRide = (): void => {
     setCurrentStep('inProgress');
     setTimeElapsed(0);
   };
 
-  const handleCompleteRide = () => {
+  const handleCompleteRide = (): void => {
     setIsLoading(true);
     
     // Simulate API call to complete the ride
@@ -69,20 +69,18 @@ export default function DriverActiveRidePage() {
     }, 1000);
   };
 
-  const handleCancelRide = () => {
+  const handleCancelRide = (): void => {
     setIsLoading(true);
     
     // Simulate API call to cancel the ride
-    const handleCancelRide = () => {
-    // In a real implementation, this would be an API call
-    setShowCancelModal(false);
-    router.push('/driver/dashboard');
-    return undefined;
-  };  
-    setTimeout(handleCancelRide, 1000);
+    const cancelRide = (): void => {
+      setShowCancelModal(false);
+      router.push('/driver/dashboard');
+    };  
+    setTimeout(cancelRide, 1000);
   };
 
-  const handleFinishRide = () => {
+  const handleFinishRide = (): void => {
     router.push('/driver/dashboard');
   };
 

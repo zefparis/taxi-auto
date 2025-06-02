@@ -55,6 +55,7 @@ export default function RegisterPage() {
     }
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onSubmit = async (formData: RegisterFormData) => {
     setIsLoading(true);
     setError(null);

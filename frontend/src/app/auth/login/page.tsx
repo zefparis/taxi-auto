@@ -36,6 +36,7 @@ export default function LoginPage() {
     }
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onSubmit = async (formData: LoginFormData) => {
     setIsLoading(true);
     setError(null);

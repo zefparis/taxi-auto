@@ -88,11 +88,11 @@ export default function RideTrackingPage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const handleCancelRide = () => {
+  const handleCancelRide = (): void => {
     setShowCancelModal(true);
   };
 
-  const handleSubmitRating = () => {
+  const handleSubmitRating = (): void => {
     // Envoyer la note et le commentaire au serveur
     console.log('Note:', rating, 'Commentaire:', comment);
     setShowRatingModal(false);

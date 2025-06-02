@@ -14,7 +14,7 @@ type AIChatProps = {
 export default function AIChat({
   // userType est utilisé dans le composant parent pour personnaliser le comportement
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  userType,
+  userType: _userType,
   initialSystemMessage = "You are a helpful assistant for Taxi Express RDC, providing support to users in French and English.",
   placeholder = "Posez votre question ici...",
   className = "",
