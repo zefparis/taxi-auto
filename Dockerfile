@@ -30,12 +30,25 @@ RUN echo "\n=== Fichiers de configuration ===" && \
     echo "\npackage.json (frontend):" && \
     cat frontend/package.json
 
-# Essayer d'installer les dépendances avec des options minimales
+# Nettoyage complet avant installation
 WORKDIR /app/frontend
-RUN echo "\n=== Essai d'installation avec npm install simple ===" && \
-    npm install || (echo "\n=== Échec de l'installation simple, affichage des erreurs ===" && \
-                   cat /root/.npm/_logs/*-debug.log && \
-                   exit 1)
+RUN echo "\n=== Nettoyage complet avant installation ===" && \
+    echo 'Suppression des caches NPM, node_modules et lockfiles...' && \
+    rm -rf node_modules && \
+    rm -f package-lock.json && \
+    rm -rf ~/.npm && \
+    npm cache clean --force
+
+# Installation des dépendances avec plusieurs méthodes de secours
+RUN echo "\n=== Installation des dépendances (méthode 1: standard) ===" && \
+    npm install --legacy-peer-deps || (\
+        echo "\n=== Échec méthode 1, tentative avec --force ===" && \
+        npm install --force || (\
+            echo "\n=== Échec méthode 2, affichage des logs d'erreur ===" && \
+            cat /root/.npm/_logs/*-debug.log 2>/dev/null || true && \
+            exit 1\
+        )\
+    )
 
 # Si on arrive ici, l'installation a réussi, on peut construire l'application
 RUN echo "\n=== Construction de l'application ===" && \
@@ -57,12 +70,23 @@ WORKDIR /app
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/frontend/package.json ./frontend/
 
-# Installer uniquement les dépendances de production
+# Nettoyage avant installation des dépendances de production
 WORKDIR /app/frontend
+RUN echo "\n=== Nettoyage avant installation de production ===" && \
+    rm -rf node_modules && \
+    rm -f package-lock.json && \
+    npm cache clean --force
+
+# Installation des dépendances de production avec méthodes de secours
 RUN echo "\n=== Installation des dépendances de production ===" && \
-    npm install --production || (echo "\n=== Échec de l'installation de production ===" && \
-                               cat /root/.npm/_logs/*-debug.log && \
-                               exit 1)
+    npm install --production --legacy-peer-deps || (\
+        echo "\n=== Échec méthode 1, tentative avec --force ===" && \
+        npm install --production --force || (\
+            echo "\n=== Échec méthode 2, affichage des logs d'erreur ===" && \
+            cat /root/.npm/_logs/*-debug.log 2>/dev/null || true && \
+            exit 1\
+        )\
+    )
 
 # Copier les fichiers construits et les fichiers statiques
 COPY --from=builder /app/frontend/.next ./frontend/.next
