@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPhone, FiMessageSquare, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle, FiCheckCircle, FiArrowRight } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
+import { FiPhone, FiMessageSquare, FiNavigation, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 export default function DriverActiveRidePage() {
   const router = useRouter();
@@ -74,11 +74,13 @@ export default function DriverActiveRidePage() {
     setIsLoading(true);
     
     // Simulate API call to cancel the ride
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowCancelModal(false);
-      router.push('/driver/dashboard');
-    }, 1000);
+    const handleCancelRide = () => {
+    // In a real implementation, this would be an API call
+    setShowCancelModal(false);
+    router.push('/driver/dashboard');
+    return undefined;
+  };  
+    setTimeout(handleCancelRide, 1000);
   };
 
   const handleFinishRide = () => {
@@ -296,7 +298,7 @@ export default function DriverActiveRidePage() {
           <div className="bg-white dark:bg-dark-200 rounded-lg max-w-md w-full p-6">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mr-4">
-                <FiAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <FiAlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Annuler la course?

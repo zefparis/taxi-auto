@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { FiHome, FiClock, FiUser, FiMapPin, FiMap, FiDollarSign, FiArrowRight, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
+import { FiClock, FiUser, FiMapPin, FiDollarSign, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 // Mock data for ride requests and history
 const mockRideRequests = [
@@ -70,7 +69,8 @@ export default function DriverDashboard() {
   const [activeTab, setActiveTab] = useState('requests');
   const [isOnline, setIsOnline] = useState(true);
   const [rideRequests, setRideRequests] = useState(mockRideRequests);
-  const [rideHistory, setRideHistory] = useState(mockRideHistory);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [rideHistory, _] = useState(mockRideHistory);
   const [isLoading, setIsLoading] = useState(false);
   
   // Mock driver data

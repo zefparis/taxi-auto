@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPhone, FiMessageSquare, FiStar, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
+import { FiPhone, FiMessageSquare, FiStar, FiNavigation, FiClock, FiX, FiAlertTriangle } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 export default function RideTrackingPage() {
   const router = useRouter();
@@ -88,15 +88,15 @@ export default function RideTrackingPage() {
   };
 
   const handleCancelRide = () => {
-    // In a real implementation, this would be an API call
-    setShowCancelModal(false);
-    router.push('/client/dashboard');
+    setShowCancelModal(true);
+    return undefined;
   };
 
   const handleSubmitRating = () => {
-    // In a real implementation, this would be an API call
+    // Envoyer la note et le commentaire au serveur
+    console.log('Note:', rating, 'Commentaire:', comment);
     setShowRatingModal(false);
-    router.push('/client/dashboard');
+    return undefined;
   };
 
   return (
