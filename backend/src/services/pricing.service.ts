@@ -1,14 +1,13 @@
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { prisma } from '../server';
 
 // Initialize OpenAI client
-let openai: OpenAIApi | null = null;
+let openai: OpenAI | null = null;
 
 if (process.env.OPENAI_API_KEY) {
-  const configuration = new Configuration({
+  openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
-  openai = new OpenAIApi(configuration);
 } else {
   console.warn('OPENAI_API_KEY is not set. Dynamic pricing will use default factors.');
 }
@@ -154,14 +153,14 @@ const getDynamicPricingFactor = async (
   }
 
   try {
-    const response = await openai.createCompletion({
+    const response = await openai.completions.create({
       model: "text-davinci-003",
       prompt: `Calculate dynamic pricing factor for a ${vehicleType} ride of ${distance}km. Consider time of day, demand, and other factors. Return only a number between 0.8 and 2.0.`,
       temperature: 0.3,
       max_tokens: 10
     });
 
-    const content = response.data.choices[0]?.text?.trim();
+    const content = response.choices[0]?.text?.trim();
     if (!content) {
       throw new Error('No content in OpenAI response');
     }

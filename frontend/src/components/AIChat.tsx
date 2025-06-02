@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAI } from '@/hooks/useAI';
-import { FiSend, FiUser, FiMessageSquare } from 'react-icons/fi';
+import { FiSend, FiUser, FiMessageSquare } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 type AIChatProps = {
   userType: 'passenger' | 'driver';
@@ -12,7 +12,7 @@ type AIChatProps = {
 };
 
 export default function AIChat({
-  userType,
+  userType, // Utilisé dans le composant parent pour personnaliser le comportement
   initialSystemMessage = "You are a helpful assistant for Taxi Express RDC, providing support to users in French and English.",
   placeholder = "Posez votre question ici...",
   className = "",

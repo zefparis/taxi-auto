@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { provideDriverAssistance } from '@/services/aiService';
-import { FiSend, FiUser, FiHelpCircle, FiTruck } from 'react-icons/fi';
+import { FiSend, FiUser, FiHelpCircle, FiTruck } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 type AIDriverAssistantProps = {
   driverName?: string;

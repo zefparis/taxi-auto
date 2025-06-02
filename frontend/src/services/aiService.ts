@@ -24,6 +24,7 @@ export type CustomerServiceRequest = {
 // Initialize OpenAI client (for server-side usage)
 // Note: This is only used server-side in API routes
 // For client-side, we use the /api/ai endpoint
+// This function is used in API routes (server-side only)
 const createOpenAIClient = () => {
   // This should only be used in API routes, not in client components
   if (typeof window !== 'undefined') {

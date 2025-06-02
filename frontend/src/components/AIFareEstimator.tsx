@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { estimateFare } from '@/services/aiService';
-import { FiDollarSign, FiClock, FiMapPin, FiTruck } from 'react-icons/fi';
+import { FiDollarSign, FiClock, FiMapPin, FiTruck } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 type AIFareEstimatorProps = {
   className?: string;

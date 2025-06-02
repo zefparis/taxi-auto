@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPhone, FiMessageSquare, FiStar, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle } from 'react-icons/fi';
+import { FiPhone, FiMessageSquare, FiStar, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 export default function RideTrackingPage() {
   const router = useRouter();
@@ -212,11 +212,15 @@ export default function RideTrackingPage() {
                 <a
                   href={`tel:${ride.driver.phone}`}
                   className="p-3 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full"
+                  title="Appeler le chauffeur"
+                  aria-label={`Appeler le chauffeur ${ride.driver.name}`}
                 >
                   <FiPhone className="h-5 w-5" />
                 </a>
                 <button
                   className="p-3 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full"
+                  title="Envoyer un message"
+                  aria-label="Envoyer un message au chauffeur"
                 >
                   <FiMessageSquare className="h-5 w-5" />
                 </button>
@@ -353,6 +357,9 @@ export default function RideTrackingPage() {
                   key={star}
                   onClick={() => setRating(star)}
                   className="mx-1 p-1"
+                  title={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
+                  aria-label={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
+                  aria-pressed={star <= rating}
                 >
                   <FiStar
                     className={`h-8 w-8 ${

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 // Registration form validation schema
 const registerSchema = z.object({
@@ -20,7 +20,7 @@ const registerSchema = z.object({
     .regex(/[0-9]/, 'Doit contenir au moins un chiffre'),
   confirmPassword: z.string().min(1, 'Confirmation du mot de passe requise'),
   terms: z.literal(true, {
-    errorMap: () => ({ message: 'Vous devez accepter les conditions d\'utilisation' })
+    errorMap: () => ({ message: 'Vous devez accepter les conditions d\'utilisation' } as const)
   })
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Les mots de passe ne correspondent pas',
@@ -51,7 +51,7 @@ export default function RegisterPage() {
       phoneNumber: '',
       password: '',
       confirmPassword: '',
-      terms: false
+      terms: false as true // Type assertion for the literal true type
     }
   });
 
@@ -99,7 +99,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">

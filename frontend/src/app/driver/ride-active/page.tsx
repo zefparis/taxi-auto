@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPhone, FiMessageSquare, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import { FiPhone, FiMessageSquare, FiNavigation, FiClock, FiMapPin, FiX, FiAlertTriangle, FiCheckCircle, FiArrowRight } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 export default function DriverActiveRidePage() {
   const router = useRouter();

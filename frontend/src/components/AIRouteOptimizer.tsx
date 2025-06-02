@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { optimizeRoute } from '@/services/aiService';
-import { FiMapPin, FiNavigation, FiClock, FiAlertTriangle } from 'react-icons/fi';
+import { FiMapPin, FiNavigation, FiClock, FiAlertTriangle } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 type AIRouteOptimizerProps = {
   className?: string;

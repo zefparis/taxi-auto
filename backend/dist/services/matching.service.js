@@ -1,15 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.findNearestDrivers = void 0;
-const openai_1 = require("openai");
+const openai_1 = __importDefault(require("openai"));
 const server_1 = require("../server");
 // Initialize OpenAI client
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
-    const configuration = new openai_1.Configuration({
+    openai = new openai_1.default({
         apiKey: process.env.OPENAI_API_KEY,
     });
-    openai = new openai_1.OpenAIApi(configuration);
 }
 else {
     console.warn('OPENAI_API_KEY is not set. AI matching will be disabled.');
@@ -130,13 +132,13 @@ async function aiSortDrivers(drivers, pickupLatitude, pickupLongitude, limit) {
     ${JSON.stringify(driverInfo, null, 2)}
 
     Return a JSON array of driver IDs in order of best match to worst match.`;
-        const response = await openai.createCompletion({
+        const response = await openai.completions.create({
             model: "text-davinci-003",
             prompt,
             temperature: 0.3,
             max_tokens: 500,
         });
-        const content = response.data.choices[0]?.text?.trim();
+        const content = response.choices[0]?.text?.trim();
         if (!content) {
             throw new Error('No content in OpenAI response');
         }

@@ -1,7 +1,6 @@
-import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FaCar, FaShieldAlt, FaUserTie, FaRoute, FaPhoneAlt, FaBusinessTime, FaPlane, FaStar } from 'react-icons/fa';
+import { FaCar, FaShieldAlt, FaUserTie, FaRoute, FaPhoneAlt, FaBusinessTime, FaPlane, FaStar } from 'react-icons/fa'; // Toutes ces icônes sont utilisées dans le JSX
 
 export default function ServicesPage() {
   return (

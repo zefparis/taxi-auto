@@ -6,7 +6,7 @@ import AIChat from '@/components/AIChat';
 import AIFareEstimator from '@/components/AIFareEstimator';
 import AIRouteOptimizer from '@/components/AIRouteOptimizer';
 import AIDriverAssistant from '@/components/AIDriverAssistant';
-import { FiCpu, FiMessageSquare, FiDollarSign, FiNavigation, FiTruck, FiHome, FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiCpu, FiMessageSquare, FiDollarSign, FiNavigation, FiTruck } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 export default function AIFeaturesPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'fare' | 'route' | 'driver'>('chat');

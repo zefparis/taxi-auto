@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiHome, FiClock, FiUser, FiMapPin, FiMap, FiDollarSign, FiArrowRight, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi';
+import { FiHome, FiClock, FiUser, FiMapPin, FiMap, FiDollarSign, FiArrowRight, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 // Mock data for ride requests and history
 const mockRideRequests = [

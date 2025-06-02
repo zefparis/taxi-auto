@@ -3,7 +3,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FiClock, FiShield, FiStar, FiPhone, FiUser, FiTruck, FiInfo, FiMapPin } from 'react-icons/fi';
+import { FiClock, FiShield, FiStar, FiPhone, FiUser, FiTruck, FiInfo, FiMapPin } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
 
 export default function Home() {
   const { theme, setTheme } = useTheme();

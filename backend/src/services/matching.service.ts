@@ -1,4 +1,4 @@
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { prisma } from '../server';
 
 interface UserProfile {
@@ -31,13 +31,12 @@ interface DriverWithDistance extends Omit<Driver, 'currentLatitude' | 'currentLo
 }
 
 // Initialize OpenAI client
-let openai: OpenAIApi | null = null;
+let openai: OpenAI | null = null;
 
 if (process.env.OPENAI_API_KEY) {
-  const configuration = new Configuration({
+  openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
-  openai = new OpenAIApi(configuration);
 } else {
   console.warn('OPENAI_API_KEY is not set. AI matching will be disabled.');
 }
@@ -190,14 +189,14 @@ async function aiSortDrivers(
 
     Return a JSON array of driver IDs in order of best match to worst match.`;
 
-    const response = await openai.createCompletion({
+    const response = await openai.completions.create({
       model: "text-davinci-003",
       prompt,
       temperature: 0.3,
       max_tokens: 500,
     });
 
-    const content = response.data.choices[0]?.text?.trim();
+    const content = response.choices[0]?.text?.trim();
     if (!content) {
       throw new Error('No content in OpenAI response');
     }
