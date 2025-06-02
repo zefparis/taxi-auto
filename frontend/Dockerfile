@@ -4,16 +4,19 @@ FROM node:18-alpine AS base
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files
 COPY package*.json ./
 COPY next.config.js ./
 COPY next-i18next.config.js ./
+COPY tsconfig.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy the rest of the application code
-COPY . .
+COPY public ./public
+COPY src ./src
+COPY app ./app
 
 # Build the application
 RUN npm run build
@@ -23,11 +26,11 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 # Copy necessary files from the builder stage
+COPY --from=base /app/next.config.js ./
+COPY --from=base /app/package.json ./
 COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
 COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./package.json
-COPY --from=base /app/next.config.js ./
 
 # Expose the port the app runs on
 EXPOSE 3000
