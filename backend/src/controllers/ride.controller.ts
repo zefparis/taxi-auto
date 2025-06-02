@@ -1,18 +1,81 @@
 import { Request, Response } from 'express';
 import { prisma } from '../server';
 import { createRideValidator } from '@shared/validators';
-import { RideStatus, PaymentStatus, UserRole } from '@shared/types';
+import { Ride, RideStatus, PaymentStatus, UserRole } from '@shared/types';
+
+// This will use our extended Express types from src/types/express/index.d.ts
+
+// Extend the Express Request type to include our user
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: UserRole;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    profileImageUrl?: string;
+  };
+}
+
+interface RideWithRelations {
+  id: string;
+  driverId: string | null;
+  clientId: string | null;
+  status: RideStatus;
+  paymentStatus: PaymentStatus;
+  pickupLocation: string;
+  dropoffLocation: string;
+  pickupLatitude: number;
+  pickupLongitude: number;
+  dropoffLatitude: number;
+  dropoffLongitude: number;
+  price: number;
+  estimatedPrice: number;
+  distance: number;
+  duration: number;
+  scheduledAt: Date | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  rating: number | null;
+  review: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  driver?: {
+    id: string;
+    user: {
+      firstName: string;
+      lastName: string;
+      phoneNumber: string;
+      profileImageUrl?: string;
+    };
+    vehicleMake: string | null;
+    vehicleModel: string | null;
+    vehicleColor: string | null;
+    licensePlate: string | null;
+  };
+  client?: {
+    id: string;
+    user: {
+firstName: string;
+      lastName: string;
+      phoneNumber: string;
+    };
+  };
+}
 import { io } from '../server';
 import { calculatePrice } from '../services/pricing.service';
 import { findNearestDrivers } from '../services/matching.service';
 
-export const requestRide = async (req: Request, res: Response) => {
+export const requestRide = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
-    }
     
     // Validate request body
     const validationResult = createRideValidator.safeParse(req.body);
@@ -156,17 +219,17 @@ export const requestRide = async (req: Request, res: Response) => {
   }
 };
 
-export const acceptRide = async (req: Request, res: Response) => {
+export const acceptRide = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
-    }
-    
-    // Check if user is a driver
-    if (req.user?.role !== UserRole.DRIVER) {
-      return res.status(403).json({ error: 'Seuls les chauffeurs peuvent accepter une course' });
+    // Check if user is a driver - we know req.user is defined at this point
+    if (req.user.role !== UserRole.DRIVER) {
+      return res.status(403).json({ error: 'Seuls les chauffeurs peuvent accepter des courses' });
     }
     
     const { rideId } = req.params;
@@ -254,14 +317,16 @@ export const acceptRide = async (req: Request, res: Response) => {
       rideId: ride.id,
       driver: {
         id: driver.id,
-        firstName: req.user.firstName,
-        lastName: req.user.lastName,
-        phoneNumber: req.user.phoneNumber,
-        profileImageUrl: req.user.profileImageUrl,
+        user: {
+          firstName: driver.user?.firstName || '',
+          lastName: driver.user?.lastName || '',
+          phoneNumber: driver.user?.phoneNumber || '',
+          profileImageUrl: driver.user?.profileImageUrl
+        },
         vehicleMake: driver.vehicleMake,
         vehicleModel: driver.vehicleModel,
         vehicleColor: driver.vehicleColor,
-        vehiclePlateNumber: driver.vehiclePlateNumber,
+        licensePlate: driver.licensePlate,
         averageRating: driver.averageRating
       },
       acceptedAt: updatedRide.acceptedAt
@@ -300,13 +365,14 @@ export const acceptRide = async (req: Request, res: Response) => {
   }
 };
 
-export const driverArrived = async (req: Request, res: Response) => {
+export const driverArrived = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
-    }
+    // User is already authenticated at this point
     
     // Check if user is a driver
     if (req.user?.role !== UserRole.DRIVER) {
@@ -369,16 +435,20 @@ export const driverArrived = async (req: Request, res: Response) => {
   }
 };
 
-export const startRide = async (req: Request, res: Response) => {
+export const startRide = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
     }
     
-    // Check if user is a driver
-    if (req.user?.role !== UserRole.DRIVER) {
+    // Check if user is a driver - we know req.user is defined at this point
+    if (req.user.role !== UserRole.DRIVER) {
       return res.status(403).json({ error: 'Seuls les chauffeurs peuvent démarrer une course' });
     }
     
@@ -441,16 +511,20 @@ export const startRide = async (req: Request, res: Response) => {
   }
 };
 
-export const completeRide = async (req: Request, res: Response) => {
+export const completeRide = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
     }
     
-    // Check if user is a driver
-    if (req.user?.role !== UserRole.DRIVER) {
+    // Check if user is a driver - we know req.user is defined at this point
+    if (req.user.role !== UserRole.DRIVER) {
       return res.status(403).json({ error: 'Seuls les chauffeurs peuvent terminer une course' });
     }
     
@@ -548,9 +622,13 @@ export const completeRide = async (req: Request, res: Response) => {
   }
 };
 
-export const cancelRide = async (req: Request, res: Response) => {
+export const cancelRide = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
@@ -662,9 +740,13 @@ export const cancelRide = async (req: Request, res: Response) => {
   }
 };
 
-export const getRideById = async (req: Request, res: Response) => {
+export const getRideById = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
@@ -740,11 +822,17 @@ export const getRideById = async (req: Request, res: Response) => {
     }
     
     // Check if user is authorized to view this ride
-    if (
-      req.user?.role === UserRole.CLIENT && ride.clientId !== clientId &&
-      req.user?.role === UserRole.DRIVER && ride.driverId !== driverId &&
-      req.user?.role !== UserRole.ADMIN
-    ) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
+    
+    const isAuthorized = (
+      (req.user.role === UserRole.CLIENT && ride.clientId === clientId) ||
+      (req.user.role === UserRole.DRIVER && ride.driverId === driverId) ||
+      req.user.role === UserRole.ADMIN
+    );
+    
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Vous n\'êtes pas autorisé à voir cette course' });
     }
     
@@ -755,9 +843,13 @@ export const getRideById = async (req: Request, res: Response) => {
   }
 };
 
-export const getUserRides = async (req: Request, res: Response) => {
+export const getUserRides = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  
+  const userId = req.user.id;
   try {
-    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
