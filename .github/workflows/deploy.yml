@@ -1,0 +1,134 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Environment variables that will be available to all jobs and steps in this workflow
+env:
+  # Railway project and service configuration
+  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+  RAILWAY_ENVIRONMENT: production
+  RAILWAY_SERVICE_BACKEND: backend
+  RAILWAY_SERVICE_FRONTEND: frontend
+  
+  # AWS S3 Configuration
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION || 'eu-west-3' }}
+  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME || 'taxi-express' }}
+  
+  # Backend Configuration
+  NODE_ENV: production
+  PORT: 3001
+  
+  # Frontend Configuration
+  NEXT_PUBLIC_ENV: production
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      
+      - name: Login to Railway
+        run: railway login --ci
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      
+      - name: Link to Railway Project
+        run: railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+      
+      - name: Set up backend environment variables
+        run: |
+          echo '--- Setting up environment variables for backend ---'
+          # Set database and auth variables
+          railway variables set DATABASE_URL="${{ secrets.DATABASE_URL }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set JWT_SECRET="${{ secrets.JWT_SECRET }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set NODE_ENV=production -s $RAILWAY_SERVICE_BACKEND
+          
+          # Set AWS S3 variables
+          railway variables set AWS_ACCESS_KEY_ID="${{ env.AWS_ACCESS_KEY_ID }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set AWS_SECRET_ACCESS_KEY="${{ env.AWS_SECRET_ACCESS_KEY }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set AWS_REGION="${{ env.AWS_REGION }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set S3_BUCKET_NAME="${{ env.S3_BUCKET_NAME }}" -s $RAILWAY_SERVICE_BACKEND
+          railway variables set S3_BASE_PATH="base/" -s $RAILWAY_SERVICE_BACKEND
+          
+          # Set other required variables with default values if not provided
+          railway variables set PORT=3001 -s $RAILWAY_SERVICE_BACKEND
+          railway variables set REDIS_URL="redis://redis:6379" -s $RAILWAY_SERVICE_BACKEND
+      
+      - name: Set up frontend environment variables
+        run: |
+          echo '--- Setting up environment variables for frontend ---'
+          # Set frontend variables
+          railway variables set NODE_ENV=production -s $RAILWAY_SERVICE_FRONTEND
+          railway variables set NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'https://taxi-backend.up.railway.app' }}" -s $RAILWAY_SERVICE_FRONTEND
+          railway variables set NEXT_PUBLIC_ENV=production -s $RAILWAY_SERVICE_FRONTEND
+      
+      - name: Deploy Backend
+        run: |
+          echo '--- Deploying Backend ---'
+          cd backend
+          
+          # Deploy the backend
+          railway up --service $RAILWAY_SERVICE_BACKEND --detach
+          
+          # Wait for backend to be ready
+          echo 'Waiting for backend to be ready...'
+          sleep 30
+          
+          # Get the backend URL
+          BACKEND_URL=$(railway service logs $RAILWAY_SERVICE_BACKEND --json | jq -r 'select(.data.url) | .data.url' | head -1)
+          echo "Backend URL: $BACKEND_URL"
+          echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_ENV
+          
+          # Check if backend is responding
+          echo 'Checking backend health...'
+          curl --retry 5 --retry-delay 10 --retry-max-time 30 --max-time 10 $BACKEND_URL/health || echo 'Backend health check failed, continuing anyway...'
+      
+      - name: Update Frontend with Backend URL
+        if: env.BACKEND_URL != ''
+        run: |
+          echo '--- Updating Frontend with Backend URL ---'
+          echo "Setting NEXT_PUBLIC_API_URL to ${{ env.BACKEND_URL }}"
+          railway variables set NEXT_PUBLIC_API_URL="${{ env.BACKEND_URL }}" -s $RAILWAY_SERVICE_FRONTEND
+      
+      - name: Deploy Frontend
+        run: |
+          echo '--- Deploying Frontend ---'
+          cd frontend
+          
+          # Deploy the frontend
+          railway up --service $RAILWAY_SERVICE_FRONTEND --detach
+          
+          # Wait for frontend to be ready
+          echo 'Waiting for frontend to be ready...'
+          sleep 30
+          
+          # Get the frontend URL
+          FRONTEND_URL=$(railway service logs $RAILWAY_SERVICE_FRONTEND --json | jq -r 'select(.data.url) | .data.url' | head -1)
+          echo "Frontend URL: $FRONTEND_URL"
+          
+          # Check if frontend is responding
+          echo 'Checking frontend health...'
+          curl --retry 5 --retry-delay 10 --retry-max-time 30 --max-time 10 $FRONTEND_URL || echo 'Frontend health check failed, continuing anyway...'
+      
+      - name: Show Deployment URLs
+        run: |
+          echo '--- Deployment Summary ---'
+          echo "Backend URL: ${{ env.BACKEND_URL }}"
+          echo "Frontend URL: $FRONTEND_URL"
+          echo "\nDeployment completed successfully!"

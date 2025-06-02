@@ -12,11 +12,36 @@ const nextConfig = {
   compress: true,
   productionBrowserSourceMaps: false, // Disable source maps in production
   output: 'standalone', // Enable standalone output for smaller Docker images
+  
+  // Handle client-side routing
+  async rewrites() {
+    return [
+      {
+        source: '/:path*',
+        destination: '/:path*',
+      },
+      {
+        source: '/client/:path*',
+        destination: '/client/:path*',
+      },
+      {
+        source: '/driver/:path*',
+        destination: '/driver/:path*',
+      },
+      // Fallback to index.html for all other routes
+      {
+        source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+        destination: '/',
+      },
+    ];
+  },
+
   experimental: {
     // Enable experimental features that reduce memory usage
     optimizeCss: true,
     scrollRestoration: true,
   },
+  
   webpack: (config, { isServer }) => {
     // Reduce memory usage by limiting the number of parallel processes
     if (!isServer) {

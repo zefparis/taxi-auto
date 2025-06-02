@@ -358,7 +358,7 @@ export default function RideTrackingPage() {
                   className="mx-1 p-1"
                   title={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
                   aria-label={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
-                  aria-pressed={star <= rating}
+                  aria-pressed={star <= rating ? "true" : "false"}
                 >
                   <FiStar
                     className={`h-8 w-8 ${
