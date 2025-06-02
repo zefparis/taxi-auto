@@ -1,38 +1,22 @@
 # Étape de construction
 FROM node:18-alpine AS builder
 
-# Activer le mode verbeux pour le débogage
-ENV NPM_CONFIG_LOGLEVEL=verbose
-
 # Définir le répertoire de travail
 WORKDIR /app
 
 # D'abord, copier uniquement les fichiers de configuration
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY frontend/package*.json ./frontend/
-COPY backend/package*.json ./backend/
-COPY shared/package*.json ./shared/
 
-# Afficher la structure des dossiers pour le débogage
-RUN ls -la && \
-    ls -la frontend/ && \
-    ls -la backend/ && \
-    ls -la shared/
+# Installer uniquement les dépendances nécessaires pour la construction du frontend
+WORKDIR /app/frontend
+RUN npm ci --omit=dev
 
-# Installer les dépendances globales
-RUN npm install -g npm@latest
-RUN npm install -g concurrently
+# Copier le reste des fichiers
+WORKDIR /app
+COPY . .
 
-# Installer les dépendances du workspace racine
-RUN npm install
-
-# Construire les packages dans l'ordre
-WORKDIR /app/shared
-RUN npm run build
-
-WORKDIR /app/backend
-RUN npm run build
-
+# Construire le frontend
 WORKDIR /app/frontend
 RUN npm run build
 
@@ -43,23 +27,23 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copier les fichiers de configuration
-COPY package*.json ./
-COPY frontend/package*.json ./frontend/
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/frontend/package*.json ./frontend/
 
 # Installer uniquement les dépendances de production
-RUN npm install --production --prefix frontend
+WORKDIR /app/frontend
+RUN npm ci --omit=dev --prefer-offline --no-audit --progress=false
 
 # Copier les fichiers construits depuis l'étape de construction
 COPY --from=builder /app/frontend/.next ./frontend/.next
 COPY --from=builder /app/frontend/public ./frontend/public
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/shared/dist ./shared/dist
 
 # Exposer le port
 EXPOSE 3000
 
-# Définir le répertoire de travail pour l'exécution
-WORKDIR /app/frontend
+# Définir les variables d'environnement
+ENV NODE_ENV=production
+ENV NODE_OPTIONS=--max_old_space_size=1024
 
 # Démarrer l'application
 CMD ["npm", "start"]
