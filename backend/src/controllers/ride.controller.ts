@@ -1,21 +1,55 @@
 import { Request, Response } from 'express';
 import { prisma } from '../server';
-import { createRideValidator } from '@shared/validators';
-import { Ride, RideStatus, PaymentStatus, UserRole } from '@shared/types';
+import { z } from 'zod';
+
+// Définition locale du validateur
+const createRideValidator = z.object({
+  pickupLocation: z.string().min(5),
+  dropoffLocation: z.string().min(5),
+  pickupLatitude: z.number(),
+  pickupLongitude: z.number(),
+  dropoffLatitude: z.number(),
+  dropoffLongitude: z.number(),
+  estimatedPrice: z.number().positive().optional(),
+  estimatedDistance: z.number().positive().optional(),
+  estimatedDuration: z.number().positive().optional(),
+  rideType: z.enum(['STANDARD', 'PREMIUM', 'LUXURY', 'VAN']).optional(),
+  paymentMethod: z.enum(['CASH', 'CARD', 'WALLET']).optional()
+});
+// Définition locale des types
+enum RideStatus {
+  REQUESTED = 'REQUESTED',
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  ARRIVED = 'ARRIVED',
+  DRIVER_ARRIVED = 'DRIVER_ARRIVED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  NO_DRIVERS_AVAILABLE = 'NO_DRIVERS_AVAILABLE'
+}
+
+enum PaymentStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+  COMPLETED = 'COMPLETED'
+}
+
+enum UserRole {
+  USER = 'USER',
+  CLIENT = 'CLIENT',
+  DRIVER = 'DRIVER',
+  ADMIN = 'ADMIN'
+}
 
 // This will use our extended Express types from src/types/express/index.d.ts
 
 // Extend the Express Request type to include our user
 interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: UserRole;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phoneNumber: string;
-    profileImageUrl?: string;
-  };
+  user?: any;
 }
 
 interface RideWithRelations {
@@ -69,7 +103,7 @@ import { io } from '../server';
 import { calculatePrice } from '../services/pricing.service';
 import { findNearestDrivers } from '../services/matching.service';
 
-export const requestRide = async (req: AuthenticatedRequest, res: Response) => {
+export const requestRide = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -90,10 +124,10 @@ export const requestRide = async (req: AuthenticatedRequest, res: Response) => {
     const {
       pickupLatitude,
       pickupLongitude,
-      pickupAddress,
-      destinationLatitude,
-      destinationLongitude,
-      destinationAddress,
+      pickupLocation: pickupAddress,  // Map pickupLocation to pickupAddress
+      dropoffLatitude: destinationLatitude,  // Map dropoffLatitude to destinationLatitude
+      dropoffLongitude: destinationLongitude,  // Map dropoffLongitude to destinationLongitude
+      dropoffLocation: destinationAddress,  // Map dropoffLocation to destinationAddress
       paymentMethod
     } = validationResult.data;
     
@@ -219,7 +253,7 @@ export const requestRide = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const acceptRide = async (req: AuthenticatedRequest, res: Response) => {
+export const acceptRide = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -365,7 +399,7 @@ export const acceptRide = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const driverArrived = async (req: AuthenticatedRequest, res: Response) => {
+export const driverArrived = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -435,7 +469,7 @@ export const driverArrived = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-export const startRide = async (req: AuthenticatedRequest, res: Response) => {
+export const startRide = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -511,7 +545,7 @@ export const startRide = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const completeRide = async (req: AuthenticatedRequest, res: Response) => {
+export const completeRide = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -622,7 +656,7 @@ export const completeRide = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-export const cancelRide = async (req: AuthenticatedRequest, res: Response) => {
+export const cancelRide = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -740,7 +774,7 @@ export const cancelRide = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getRideById = async (req: AuthenticatedRequest, res: Response) => {
+export const getRideById = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -843,7 +877,7 @@ export const getRideById = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getUserRides = async (req: AuthenticatedRequest, res: Response) => {
+export const getUserRides = async (req: any, res: any) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Non autorisé' });
   }

@@ -1,9 +1,17 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../server';
-import { updateUserValidator } from '@shared/validators';
+import { z } from 'zod';
 
-export const getProfile = async (req: Request, res: Response) => {
+// Définition locale du validateur
+const updateUserValidator = z.object({
+  firstName: z.string().min(2).optional(),
+  lastName: z.string().min(2).optional(),
+  phoneNumber: z.string().min(10).optional(),
+  profileImageUrl: z.string().url().optional().nullable()
+});
+
+export const getProfile = async (req: any, res: any) => {
   try {
     const userId = req.user?.id;
     
@@ -74,7 +82,7 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (req: any, res: any) => {
   try {
     const userId = req.user?.id;
     
@@ -140,7 +148,7 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const changePassword = async (req: Request, res: Response) => {
+export const changePassword = async (req: any, res: any) => {
   try {
     const userId = req.user?.id;
     
@@ -207,7 +215,7 @@ export const changePassword = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteAccount = async (req: Request, res: Response) => {
+export const deleteAccount = async (req: any, res: any) => {
   try {
     const userId = req.user?.id;
     
