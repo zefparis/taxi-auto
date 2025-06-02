@@ -5,12 +5,16 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # D'abord, copier uniquement les fichiers de configuration
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY frontend/package*.json ./frontend/
 
 # Installer uniquement les dépendances nécessaires pour la construction du frontend
 WORKDIR /app/frontend
-RUN npm ci --omit=dev
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev --prefer-offline --no-audit --progress=false; \
+    else \
+      npm install --omit=dev --prefer-offline --no-audit --progress=false; \
+    fi
 
 # Copier le reste des fichiers
 WORKDIR /app
@@ -32,7 +36,11 @@ COPY --from=builder /app/frontend/package*.json ./frontend/
 
 # Installer uniquement les dépendances de production
 WORKDIR /app/frontend
-RUN npm ci --omit=dev --prefer-offline --no-audit --progress=false
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev --prefer-offline --no-audit --progress=false; \
+    else \
+      npm install --omit=dev --prefer-offline --no-audit --progress=false; \
+    fi
 
 # Copier les fichiers construits depuis l'étape de construction
 COPY --from=builder /app/frontend/.next ./frontend/.next
