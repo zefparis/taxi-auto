@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { FiHome, FiClock, FiUser, FiMapPin, FiMap, FiDollarSign, FiArrowRight, FiStar } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
+import { FiClock, FiUser, FiMapPin, FiMap, FiDollarSign, FiStar, FiArrowRight } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 // Mock data for ride history
 const mockRideHistory = [
@@ -48,7 +47,8 @@ export default function ClientDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [pickupLocation, setPickupLocation] = useState('');
   const [destination, setDestination] = useState('');
-  const [rideHistory, setRideHistory] = useState(mockRideHistory);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [rideHistory, _] = useState(mockRideHistory);
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const [showPriceEstimate, setShowPriceEstimate] = useState(false);
   

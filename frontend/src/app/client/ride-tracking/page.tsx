@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPhone, FiMessageSquare, FiStar, FiNavigation, FiClock, FiX, FiAlertTriangle } from 'react-icons/fi'; // Icônes utilisés dans le JSX
+import { FiPhone, FiMessageSquare, FiStar, FiClock, FiX, FiAlertCircle } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 export default function RideTrackingPage() {
-  const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _router = useRouter();
   const [currentStep, setCurrentStep] = useState('searching'); // searching, driverAssigned, driverArriving, inProgress, completed
   const [timeRemaining, setTimeRemaining] = useState(5 * 60); // 5 minutes in seconds
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -89,14 +90,12 @@ export default function RideTrackingPage() {
 
   const handleCancelRide = () => {
     setShowCancelModal(true);
-    return undefined;
   };
 
   const handleSubmitRating = () => {
     // Envoyer la note et le commentaire au serveur
     console.log('Note:', rating, 'Commentaire:', comment);
     setShowRatingModal(false);
-    return undefined;
   };
 
   return (
@@ -300,7 +299,7 @@ export default function RideTrackingPage() {
           <div className="bg-white dark:bg-dark-200 rounded-lg max-w-md w-full p-6">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mr-4">
-                <FiAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <FiAlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Annuler la course?

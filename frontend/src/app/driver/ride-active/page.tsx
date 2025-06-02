@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { FiPhone, FiMessageSquare, FiNavigation, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 export default function DriverActiveRidePage() {

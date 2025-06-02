@@ -55,7 +55,7 @@ export default function RegisterPage() {
     }
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmit = async (formData: RegisterFormData) => {
     setIsLoading(true);
     setError(null);
     
@@ -64,7 +64,7 @@ export default function RegisterPage() {
       // const response = await fetch('/api/auth/register', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ ...data, role })
+      //   body: JSON.stringify({ ...formData, role })
       // });
       
       // Mock successful registration for now

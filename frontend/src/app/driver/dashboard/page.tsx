@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiClock, FiUser, FiMapPin, FiDollarSign, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi'; // Icônes utilisés dans le JSX
+import { FiClock, FiUser, FiMapPin, FiStar, FiToggleRight, FiToggleLeft, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 // Mock data for ride requests and history
 const mockRideRequests = [

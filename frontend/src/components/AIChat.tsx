@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAI } from '@/hooks/useAI';
-import { FiSend, FiUser, FiMessageSquare } from 'react-icons/fi'; // Tous ces icônes sont utilisés dans le JSX
+import { FiSend, FiUser, FiMessageSquare } from 'react-icons/fi'; // Icônes utilisés dans le JSX
 
 type AIChatProps = {
   userType: 'passenger' | 'driver';
