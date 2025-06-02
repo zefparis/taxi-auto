@@ -1,0 +1,11 @@
+{
+  "$schema": "https://windsurf.dev/windsurf.schema.json",
+  "build": {
+    "builder": "DOCKER",
+    "dockerfile": "Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "cd frontend && npm start"
+  },
+  "ports": ["3000"]
+}
