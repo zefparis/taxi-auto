@@ -5,10 +5,8 @@ yarn-debug.log
 yarn-error.log
 
 # Environment variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
+!.env.example
 
 # Build output
 .next
@@ -27,3 +25,14 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Fichiers de cache
+.cache
+.turbo
+
+# Fichiers de couverture de test
+coverage
+
+# Fichiers de lock
+yarn.lock
+package-lock.json
