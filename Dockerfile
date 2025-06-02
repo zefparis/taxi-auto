@@ -10,6 +10,9 @@ WORKDIR /app
 # Afficher la version de npm et node
 RUN npm --version && node --version
 
+# Créer le dossier frontend s'il n'existe pas
+RUN mkdir -p frontend
+
 # Copier les fichiers de configuration
 COPY package.json ./
 COPY frontend/package.json ./frontend/
@@ -17,12 +20,9 @@ COPY frontend/package.json ./frontend/
 # Afficher la structure des dossiers
 RUN ls -la && ls -la frontend/
 
-# Installer les dépendances globales
-RUN npm install -g npm@latest
-
 # Installer les dépendances du frontend
 WORKDIR /app/frontend
-RUN npm install --legacy-peer-deps --no-optional
+RUN npm install --legacy-peer-deps --no-optional --no-fund --no-audit
 
 # Copier le reste des fichiers
 WORKDIR /app
@@ -44,7 +44,7 @@ COPY --from=builder /app/frontend/package.json ./frontend/
 
 # Installer les dépendances de production
 WORKDIR /app/frontend
-RUN npm install --production --legacy-peer-deps --no-optional
+RUN npm install --production --legacy-peer-deps --no-optional --no-fund --no-audit
 
 # Copier les fichiers construits depuis l'étape de construction
 COPY --from=builder /app/frontend/.next ./frontend/.next
